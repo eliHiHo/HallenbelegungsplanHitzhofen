@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    container_name: hallen-db
+    environment:
+      POSTGRES_DB: hallen
+      POSTGRES_USER: hallen
+      POSTGRES_PASSWORD: hallen
+    ports:
+      - "5432:5432"
+    volumes:
+      - hallen_db_data:/var/lib/postgresql/data
+
+volumes:
+  hallen_db_data:
