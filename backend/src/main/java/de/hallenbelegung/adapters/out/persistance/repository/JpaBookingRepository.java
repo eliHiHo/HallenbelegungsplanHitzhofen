@@ -1,0 +1,4 @@
+package de.hallenbelegung.adapters.out.persistance.repository;
+
+public class JpaBookingRepository {
+}
