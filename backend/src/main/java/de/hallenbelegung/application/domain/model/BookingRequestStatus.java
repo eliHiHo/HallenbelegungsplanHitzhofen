@@ -1,4 +1,7 @@
 package de.hallenbelegung.application.domain.model;
 
-public record BookingRequestStatus() {
+public enum BookingRequestStatus {
+    OPEN,
+    APPROVED,
+    REJECTED
 }

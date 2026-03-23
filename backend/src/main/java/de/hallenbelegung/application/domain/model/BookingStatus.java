@@ -1,4 +1,7 @@
 package de.hallenbelegung.application.domain.model;
 
-public record BookingStatus() {
+public enum BookingStatus {
+    APPROVED,
+    CANCELLED,
+    ACTIVE
 }
