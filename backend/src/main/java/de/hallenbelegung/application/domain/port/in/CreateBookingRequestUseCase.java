@@ -1,4 +1,11 @@
 package de.hallenbelegung.application.domain.port.in;
 
-public class CreateBookingRequestUseCase {
+import java.time.LocalDateTime;
+
+public interface CreateBookingRequestUseCase {
+
+    Long create(Long userId, Long hallId,
+                String title,
+                LocalDateTime startTime,
+                LocalDateTime endTime);
 }

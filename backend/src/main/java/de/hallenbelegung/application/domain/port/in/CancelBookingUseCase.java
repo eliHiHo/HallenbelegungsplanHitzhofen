@@ -1,4 +1,6 @@
 package de.hallenbelegung.application.domain.port.in;
 
-public class CancelBookingUseCase {
+public interface CancelBookingUseCase {
+
+    void cancel(Long bookingId, Long userId);
 }

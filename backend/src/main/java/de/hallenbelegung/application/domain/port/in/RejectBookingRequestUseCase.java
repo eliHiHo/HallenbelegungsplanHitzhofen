@@ -1,4 +1,6 @@
 package de.hallenbelegung.application.domain.port.in;
 
-public class RejectBookingRequestUseCase {
+public interface RejectBookingRequestUseCase {
+
+    void reject(Long bookingRequestId, Long adminUserId, String reason);
 }

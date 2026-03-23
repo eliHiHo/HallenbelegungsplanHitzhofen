@@ -1,4 +1,11 @@
 package de.hallenbelegung.application.domain.port.in;
 
-public class GetCalenderWeekUseCase {
+import de.hallenbelegung.adapters.in.api.dto.CalendarWeekDTO;
+import de.hallenbelegung.adapters.in.api.dto.HallDTO;
+
+import java.time.LocalDate;
+
+public interface GetCalenderWeekUseCase {
+
+    CalendarWeekDTO getWeek(LocalDate startOfWeek);
 }
