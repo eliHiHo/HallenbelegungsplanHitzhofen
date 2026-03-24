@@ -9,8 +9,9 @@ import de.hallenbelegung.application.domain.port.in.GetCurrentUserUseCase;
 import de.hallenbelegung.application.domain.port.in.LoginUseCase;
 import de.hallenbelegung.application.domain.port.in.LogoutUseCase;
 import de.hallenbelegung.application.domain.port.in.ResetPasswordUseCase;
-import de.hallenbelegung.application.domain.port.out.NotificationPort;
+import de.hallenbelegung.application.domain.port.out.LoginRateLimitPort;
 import de.hallenbelegung.application.domain.port.out.PasswordHashingPort;
+import de.hallenbelegung.application.domain.port.out.PasswordResetMailPort;
 import de.hallenbelegung.application.domain.port.out.PasswordResetPort;
 import de.hallenbelegung.application.domain.port.out.PasswordVerificationPort;
 import de.hallenbelegung.application.domain.port.out.SessionPort;
@@ -40,20 +41,23 @@ public class AuthService implements
     private final PasswordHashingPort passwordHashingPort;
     private final SessionPort sessionPort;
     private final PasswordResetPort passwordResetPort;
-    private final NotificationPort mailPort;
+    private final PasswordResetMailPort passwordResetMailPort;
+    private final LoginRateLimitPort loginRateLimitPort;
 
     public AuthService(UserRepositoryPort userRepository,
                        PasswordVerificationPort passwordVerificationPort,
                        PasswordHashingPort passwordHashingPort,
                        SessionPort sessionPort,
                        PasswordResetPort passwordResetPort,
-                       NotificationPort mailPort) {
+                       PasswordResetMailPort passwordResetMailPort,
+                       LoginRateLimitPort loginRateLimitPort) {
         this.userRepository = userRepository;
         this.passwordVerificationPort = passwordVerificationPort;
         this.passwordHashingPort = passwordHashingPort;
         this.sessionPort = sessionPort;
         this.passwordResetPort = passwordResetPort;
-        this.mailPort = mailPort;
+        this.passwordResetMailPort = passwordResetMailPort;
+        this.loginRateLimitPort = loginRateLimitPort;
     }
 
     @Override
@@ -61,8 +65,13 @@ public class AuthService implements
         String normalizedEmail = normalizeAndValidateEmail(email);
         validatePasswordInput(password);
 
+        loginRateLimitPort.checkLoginAllowed(normalizedEmail);
+
         User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new ValidationException("Invalid credentials"));
+                .orElseThrow(() -> {
+                    loginRateLimitPort.recordFailedLogin(normalizedEmail);
+                    return new ValidationException("Invalid credentials");
+                });
 
         if (!user.isActive()) {
             throw new ForbiddenException("User account is inactive");
@@ -70,8 +79,11 @@ public class AuthService implements
 
         boolean passwordMatches = passwordVerificationPort.matches(password, user.getPasswordHash());
         if (!passwordMatches) {
+            loginRateLimitPort.recordFailedLogin(normalizedEmail);
             throw new ValidationException("Invalid credentials");
         }
+
+        loginRateLimitPort.resetLoginFailures(normalizedEmail);
 
         sessionPort.invalidateSessionsByUserId(user.getId());
 
@@ -116,6 +128,9 @@ public class AuthService implements
     public void requestPasswordReset(String email) {
         String normalizedEmail = normalizeAndValidateEmail(email);
 
+        loginRateLimitPort.checkPasswordResetAllowed(normalizedEmail);
+        loginRateLimitPort.recordPasswordResetRequest(normalizedEmail);
+
         userRepository.findByEmail(normalizedEmail).ifPresent(user -> {
             if (!user.isActive()) {
                 return;
@@ -123,7 +138,7 @@ public class AuthService implements
 
             passwordResetPort.invalidateTokensByUserId(user.getId());
             String token = passwordResetPort.createToken(user.getId(), RESET_TOKEN_VALIDITY);
-            mailPort.sendPasswordResetMail(user.getEmail(), token);
+            passwordResetMailPort.sendPasswordResetMail(user, token);
         });
 
         // bewusst keine Exception bei unbekannter Mail
