@@ -13,12 +13,13 @@ import de.hallenbelegung.application.domain.port.in.GetUserBookingSeriesUseCase;
 import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingSeriesRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import de.hallenbelegung.application.domain.port.out.NotificationPort;
 
 import java.util.List;
 import java.util.UUID;
-
+@ApplicationScoped
 @Transactional
 public class BookingSeriesService implements
         GetBookingSeriesUseCase,

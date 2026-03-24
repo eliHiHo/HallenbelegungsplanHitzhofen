@@ -11,6 +11,7 @@ import de.hallenbelegung.application.domain.model.Hall;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.*;
 import de.hallenbelegung.application.domain.port.out.*;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
 import java.time.Clock;
@@ -23,7 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 import de.hallenbelegung.application.domain.port.out.HallConfigPort;
-
+@ApplicationScoped
 @Transactional
 public class BookingSeriesRequestService implements ApproveBookingSeriesRequestUseCase,
         RejectBookingSeriesRequestUseCase,

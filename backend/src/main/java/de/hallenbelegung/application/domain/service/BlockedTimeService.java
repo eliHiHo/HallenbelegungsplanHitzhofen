@@ -15,6 +15,7 @@ import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.HallConfigPort;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -22,7 +23,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
-
+@ApplicationScoped
 @Transactional
 public class BlockedTimeService implements
         CreateBlockedTimeUseCase,
