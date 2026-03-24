@@ -15,7 +15,6 @@ import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingRequestRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import de.hallenbelegung.application.domain.port.out.NotificationPort;
 import de.hallenbelegung.application.domain.port.out.HallConfigPort;
@@ -24,6 +23,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 @Transactional
 public class BookingRequestService implements
@@ -63,8 +63,8 @@ public class BookingRequestService implements
     }
 
     @Override
-    public Long create(Long userId,
-                       Long hallId,
+    public UUID create(UUID userId,
+                       UUID hallId,
                        String title,
                        String description,
                        LocalDateTime startTime,
@@ -110,7 +110,7 @@ public class BookingRequestService implements
         return saved.getId();
     }
 
-    public void approve(Long adminUserId, Long bookingRequestId) {
+    public void approve(UUID adminUserId, UUID bookingRequestId) {
 
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new NotFoundException("Admin user not found"));
@@ -136,17 +136,16 @@ public class BookingRequestService implements
             throw new ForbiddenException("Hall inactive");
         }
 
-        LocalDateTime startTime = request.getStartDateTime();
-        LocalDateTime endTime = request.getEndDateTime();
+        LocalDateTime startTime = request.getstartAt();
+        LocalDateTime endTime = request.getendAt();
 
         checkForConflicts(hall, startTime, endTime);
 
         Booking booking = Booking.createNew(
                 request.getTitle(),
                 request.getDescription(),
-                request.getDate(),
-                request.getStartDateTime(),
-                request.getEndDateTime(),
+                request.getstartAt(),
+                request.getendAt(),
                 request.getHall(),
                 request.getRequestingUser(),
                 null
@@ -160,7 +159,7 @@ public class BookingRequestService implements
         notificationPort.notifyRequesterAboutBookingRequestApproved(request, booking);
     }
 
-    public void reject(Long adminUserId, Long bookingRequestId, String reason) {
+    public void reject(UUID adminUserId, UUID bookingRequestId, String reason) {
 
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new NotFoundException("Admin user not found"));
@@ -186,7 +185,7 @@ public class BookingRequestService implements
         notificationPort.notifyRequesterAboutBookingRequestRejected(request, reason);
     }
 
-    public List<BookingRequest> getOpenRequests(Long adminUserId) {
+    public List<BookingRequest> getOpenRequests(UUID adminUserId) {
 
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new NotFoundException("Admin user not found"));
@@ -199,13 +198,13 @@ public class BookingRequestService implements
             throw new ForbiddenException("Admin user inactive");
         }
 
-        return bookingRequestRepository.findByStatus(BookingRequestStatus.OPEN)
+        return bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)
                 .stream()
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .toList();
     }
 
-    public List<BookingRequest> getAllRequests(Long adminUserId) {
+    public List<BookingRequest> getAllRequests(UUID adminUserId) {
 
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new NotFoundException("Admin user not found"));
@@ -224,7 +223,7 @@ public class BookingRequestService implements
                 .toList();
     }
 
-    public List<BookingRequest> getRequestsByUser(Long userId) {
+    public List<BookingRequest> getRequestsByUser(UUID userId) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -239,7 +238,7 @@ public class BookingRequestService implements
                 .toList();
     }
 
-    public BookingRequest getById(Long currentUserId, Long bookingRequestId) {
+    public BookingRequest getById(UUID currentUserId, UUID bookingRequestId) {
 
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new NotFoundException("User not found"));

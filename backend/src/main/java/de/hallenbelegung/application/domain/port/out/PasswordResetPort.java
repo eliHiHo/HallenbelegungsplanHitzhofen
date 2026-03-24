@@ -2,14 +2,11 @@ package de.hallenbelegung.application.domain.port.out;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface PasswordResetPort {
-
-    String createToken(Long userId, Duration validity);
-
-    Optional<Long> findUserIdByValidToken(String token);
-
+    String createToken(UUID userId, Duration validity);
+    Optional<UUID> findUserIdByValidToken(String token);
     void invalidateToken(String token);
-
-    void invalidateTokensByUserId(Long userId);
+    void invalidateTokensByUserId(UUID userId);
 }

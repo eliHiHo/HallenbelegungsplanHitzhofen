@@ -5,10 +5,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Objects;
+import java.util.UUID;
 
 public class BookingSeriesRequest {
 
-    private final Long id;
+    private final UUID id;
     private String title;
     private String description;
     private DayOfWeek weekday;
@@ -19,12 +20,14 @@ public class BookingSeriesRequest {
     private BookingRequestStatus status;
     private String rejectionReason;
     private Hall hall;
-    private User requestingUser;
+    private User requestedBy;
+    private User processedBy;
     private final Instant createdAt;
     private Instant updatedAt;
+    private Instant processedAt;
 
     public BookingSeriesRequest(
-            Long id,
+            UUID id,
             String title,
             String description,
             DayOfWeek weekday,
@@ -35,9 +38,11 @@ public class BookingSeriesRequest {
             BookingRequestStatus status,
             String rejectionReason,
             Hall hall,
-            User requestingUser,
+            User requestedBy,
+            User processedBy,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            Instant processedAt
     ) {
         this.id = id;
         this.title = Objects.requireNonNull(title);
@@ -50,9 +55,11 @@ public class BookingSeriesRequest {
         this.status = Objects.requireNonNull(status);
         this.rejectionReason = rejectionReason;
         this.hall = Objects.requireNonNull(hall);
-        this.requestingUser = Objects.requireNonNull(requestingUser);
+        this.requestedBy = Objects.requireNonNull(requestedBy);
+        this.processedBy = processedBy;
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
+        this.processedAt = processedAt;
     }
 
     public static BookingSeriesRequest createNew(
@@ -64,7 +71,7 @@ public class BookingSeriesRequest {
             LocalDate startDate,
             LocalDate endDate,
             Hall hall,
-            User requestingUser
+            User requestedBy
     ) {
         Instant now = Instant.now();
 
@@ -77,16 +84,18 @@ public class BookingSeriesRequest {
                 endTime,
                 startDate,
                 endDate,
-                BookingRequestStatus.OPEN,
+                BookingRequestStatus.PENDING,
                 null,
                 hall,
-                requestingUser,
+                requestedBy,
+                null,
                 now,
-                now
+                now,
+                null
         );
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
@@ -130,8 +139,12 @@ public class BookingSeriesRequest {
         return hall;
     }
 
-    public User getRequestingUser() {
-        return requestingUser;
+    public User getRequestedBy() {
+        return requestedBy;
+    }
+
+    public User getProcessedBy() {
+        return processedBy;
     }
 
     public Instant getCreatedAt() {
@@ -142,8 +155,12 @@ public class BookingSeriesRequest {
         return updatedAt;
     }
 
-    public boolean isOpen() {
-        return status == BookingRequestStatus.OPEN;
+    public Instant getProcessedAt() {
+        return processedAt;
+    }
+
+    public boolean isPending() {
+        return status == BookingRequestStatus.PENDING;
     }
 
     public boolean isApproved() {
@@ -154,15 +171,21 @@ public class BookingSeriesRequest {
         return status == BookingRequestStatus.REJECTED;
     }
 
-    public void approve() {
+    public void approve(User processedBy) {
+        Instant now = Instant.now();
         this.status = BookingRequestStatus.APPROVED;
         this.rejectionReason = null;
-        this.updatedAt = Instant.now();
+        this.processedBy = Objects.requireNonNull(processedBy);
+        this.processedAt = now;
+        this.updatedAt = now;
     }
 
-    public void reject(String rejectionReason) {
+    public void reject(User processedBy, String rejectionReason) {
+        Instant now = Instant.now();
         this.status = BookingRequestStatus.REJECTED;
         this.rejectionReason = rejectionReason;
-        this.updatedAt = Instant.now();
+        this.processedBy = Objects.requireNonNull(processedBy);
+        this.processedAt = now;
+        this.updatedAt = now;
     }
 }

@@ -5,18 +5,19 @@ import de.hallenbelegung.application.domain.model.BlockedTime;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface BlockedTimeRepositoryPort {
 
     BlockedTime save(BlockedTime blockedTime);
 
-    Optional<BlockedTime> findById(Long blockedTimeId);
+    Optional<BlockedTime> findById(UUID blockedTimeId);
 
-    List<BlockedTime> findByHallIdAndTimeRange(Long hallId, LocalDateTime startTime, LocalDateTime endTime);
+    List<BlockedTime> findByHallIdAndTimeRange(UUID hallId, LocalDateTime startTime, LocalDateTime endTime);
 
     List<BlockedTime> findAllByTimeRange(LocalDateTime startTime, LocalDateTime endTime);
 
-    void deleteById(Long blockedTimeId);
+    void deleteById(UUID blockedTimeId);
 
     List<BlockedTime> findAll();
 }

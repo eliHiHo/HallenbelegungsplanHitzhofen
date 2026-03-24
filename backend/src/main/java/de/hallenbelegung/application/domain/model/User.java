@@ -2,10 +2,11 @@ package de.hallenbelegung.application.domain.model;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 public class User {
 
-    private final Long id;
+    private final UUID id;
     private String firstName;
     private String lastName;
     private String email;
@@ -16,7 +17,7 @@ public class User {
     private Instant updatedAt;
 
     public User(
-            Long id,
+            UUID id,
             String firstName,
             String lastName,
             String email,
@@ -59,7 +60,7 @@ public class User {
         );
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 

@@ -3,12 +3,12 @@ package de.hallenbelegung.application.domain.view;
 import java.time.LocalDateTime;
 
 public record BookingDetailView(
-        Long id,
+        java.util.UUID id,
         String title,
         String description,
         LocalDateTime startDateTime,
         LocalDateTime endDateTime,
-        Long hallId,
+        java.util.UUID hallId,
         String hallName,
         String status,
         String responsibleUserName,

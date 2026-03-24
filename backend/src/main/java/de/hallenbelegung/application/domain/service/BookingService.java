@@ -23,6 +23,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 import de.hallenbelegung.application.domain.port.out.HallConfigPort;
 
@@ -61,7 +62,7 @@ public class BookingService implements
     }
 
     @Override
-    public BookingDetailView getById(Long currentUserId, Long bookingId) {
+    public BookingDetailView getById(UUID currentUserId, UUID bookingId) {
         Booking booking = loadBooking(bookingId);
 
         if (currentUserId == null) {
@@ -82,17 +83,17 @@ public class BookingService implements
     }
 
     @Override
-    public List<Booking> getBookingsByUser(Long userId) {
+    public List<Booking> getBookingsByUser(UUID userId) {
         User user = loadActiveUser(userId);
 
         return bookingRepository.findByResponsibleUserId(user.getId())
                 .stream()
-                .sorted((a, b) -> b.getStartDateTime().compareTo(a.getStartDateTime()))
+                .sorted((a, b) -> b.getstartAt().compareTo(a.getstartAt()))
                 .toList();
     }
 
     @Override
-    public void cancel(Long currentUserId, Long bookingId, String cancellationReason) {
+    public void cancel(UUID currentUserId, UUID bookingId, String cancellationReason) {
         User user = loadActiveUser(currentUserId);
         Booking booking = loadBooking(bookingId);
 
@@ -117,8 +118,8 @@ public class BookingService implements
         }
     }
 
-    public void addFeedback(Long currentUserId,
-                            Long bookingId,
+    public void addFeedback(UUID currentUserId,
+                            UUID bookingId,
                             Integer participantCount,
                             String feedbackComment) {
         User user = loadActiveUser(currentUserId);
@@ -139,14 +140,14 @@ public class BookingService implements
     }
 
     @Override
-    public void updateFeedback(Long bookingId, Integer participantCount, String comment, Long userId) {
+    public void updateFeedback(UUID bookingId, Integer participantCount, String comment, UUID userId) {
         addFeedback(userId, bookingId, participantCount, comment);
     }
 
     @Override
-    public Booking update(Long currentUserId,
-                          Long bookingId,
-                          Long hallId,
+    public Booking update(UUID currentUserId,
+                          UUID bookingId,
+                          UUID hallId,
                           String title,
                           String description,
                           LocalDateTime startTime,
@@ -191,7 +192,7 @@ public class BookingService implements
         return savedBooking;
     }
 
-    private User loadActiveUser(Long userId) {
+    private User loadActiveUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
@@ -202,7 +203,7 @@ public class BookingService implements
         return user;
     }
 
-    private Booking loadBooking(Long bookingId) {
+    private Booking loadBooking(UUID bookingId) {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Booking not found"));
     }
@@ -260,7 +261,7 @@ public class BookingService implements
         }
     }
 
-    private void checkForConflictsExcludingCurrentBooking(Long currentBookingId,
+    private void checkForConflictsExcludingCurrentBooking(UUID currentBookingId,
                                                           Hall requestedHall,
                                                           LocalDateTime start,
                                                           LocalDateTime end) {
@@ -331,8 +332,8 @@ public class BookingService implements
                 booking.getId(),
                 booking.getTitle(),
                 booking.getDescription(),
-                booking.getStartDateTime(),
-                booking.getEndDateTime(),
+                booking.getstartAt(),
+                booking.getendAt(),
                 booking.getHall().getId(),
                 booking.getHall().getName(),
                 booking.getStatus().name(),

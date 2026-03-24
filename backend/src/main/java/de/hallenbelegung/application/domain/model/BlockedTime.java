@@ -3,55 +3,70 @@ package de.hallenbelegung.application.domain.model;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 public class BlockedTime {
 
-    private final Long id;
+    private final UUID id;
     private String reason;
-    private LocalDateTime startDateTime;
-    private LocalDateTime endDateTime;
+    private LocalDateTime startAt;
+    private LocalDateTime endAt;
+    private BlockedTimeType type;
     private Hall hall;
+    private User createdBy;
+    private User updatedBy;
     private final Instant createdAt;
     private Instant updatedAt;
 
     public BlockedTime(
-            Long id,
+            UUID id,
             String reason,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
+            BlockedTimeType type,
             Hall hall,
+            User createdBy,
+            User updatedBy,
             Instant createdAt,
             Instant updatedAt
     ) {
         this.id = id;
         this.reason = Objects.requireNonNull(reason);
-        this.startDateTime = Objects.requireNonNull(startDateTime);
-        this.endDateTime = Objects.requireNonNull(endDateTime);
+        this.startAt = Objects.requireNonNull(startAt);
+        this.endAt = Objects.requireNonNull(endAt);
+        this.type = Objects.requireNonNull(type);
         this.hall = Objects.requireNonNull(hall);
+        this.createdBy = Objects.requireNonNull(createdBy);
+        this.updatedBy = updatedBy;
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
     }
 
     public static BlockedTime createNew(
             String reason,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
-            Hall hall
+            LocalDateTime startAt,
+            LocalDateTime endAt,
+            BlockedTimeType type,
+            Hall hall,
+            User createdBy
     ) {
         Instant now = Instant.now();
 
         return new BlockedTime(
                 null,
                 reason,
-                startDateTime,
-                endDateTime,
+                startAt,
+                endAt,
+                type,
                 hall,
+                createdBy,
+                createdBy,
                 now,
                 now
         );
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
@@ -59,16 +74,28 @@ public class BlockedTime {
         return reason;
     }
 
-    public LocalDateTime getStartDateTime() {
-        return startDateTime;
+    public LocalDateTime getStartAt() {
+        return startAt;
     }
 
-    public LocalDateTime getEndDateTime() {
-        return endDateTime;
+    public LocalDateTime getEndAt() {
+        return endAt;
+    }
+
+    public BlockedTimeType getType() {
+        return type;
     }
 
     public Hall getHall() {
         return hall;
+    }
+
+    public User getCreatedBy() {
+        return createdBy;
+    }
+
+    public User getUpdatedBy() {
+        return updatedBy;
     }
 
     public Instant getCreatedAt() {
@@ -81,14 +108,18 @@ public class BlockedTime {
 
     public void updateDetails(
             String reason,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
-            Hall hall
+            LocalDateTime startAt,
+            LocalDateTime endAt,
+            BlockedTimeType type,
+            Hall hall,
+            User updatedBy
     ) {
         this.reason = Objects.requireNonNull(reason);
-        this.startDateTime = Objects.requireNonNull(startDateTime);
-        this.endDateTime = Objects.requireNonNull(endDateTime);
+        this.startAt = Objects.requireNonNull(startAt);
+        this.endAt = Objects.requireNonNull(endAt);
+        this.type = Objects.requireNonNull(type);
         this.hall = Objects.requireNonNull(hall);
+        this.updatedBy = Objects.requireNonNull(updatedBy);
         this.updatedAt = Instant.now();
     }
 }

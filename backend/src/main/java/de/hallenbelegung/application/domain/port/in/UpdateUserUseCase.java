@@ -2,9 +2,11 @@ package de.hallenbelegung.application.domain.port.in;
 
 import de.hallenbelegung.application.domain.model.Role;
 
+import java.util.UUID;
+
 public interface UpdateUserUseCase {
-    void updateUser(Long adminUserId,
-                    Long userId,
+    void updateUser(UUID adminUserId,
+                    UUID userId,
                     String firstName,
                     String lastName,
                     String email,

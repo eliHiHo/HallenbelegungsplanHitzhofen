@@ -5,6 +5,7 @@ import de.hallenbelegung.application.domain.view.SessionUserView;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface SessionPort {
 
@@ -14,7 +15,7 @@ public interface SessionPort {
 
     void invalidateSession(String sessionId);
 
-    void invalidateSessionsByUserId(Long userId);
+    void invalidateSessionsByUserId(UUID userId);
 
     void touchSession(String sessionId, Duration inactivityTimeout);
 }

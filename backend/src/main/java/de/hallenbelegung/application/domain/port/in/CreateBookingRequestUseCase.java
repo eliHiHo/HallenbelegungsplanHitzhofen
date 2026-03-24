@@ -1,10 +1,11 @@
 package de.hallenbelegung.application.domain.port.in;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public interface CreateBookingRequestUseCase {
-    Long create(Long userId,
-                Long hallId,
+    UUID create(UUID userId,
+                UUID hallId,
                 String title,
                 String description,
                 LocalDateTime startTime,

@@ -2,17 +2,19 @@ package de.hallenbelegung.application.domain.view;
 
 import de.hallenbelegung.application.domain.model.Role;
 
+import java.util.UUID;
+
 public class AuthSessionView {
 
     private final String sessionId;
-    private final Long userId;
+    private final UUID userId;
     private final String firstName;
     private final String lastName;
     private final String email;
     private final Role role;
 
     public AuthSessionView(String sessionId,
-                           Long userId,
+                           UUID userId,
                            String firstName,
                            String lastName,
                            String email,
@@ -29,7 +31,7 @@ public class AuthSessionView {
         return sessionId;
     }
 
-    public Long getUserId() {
+    public UUID getUserId() {
         return userId;
     }
 

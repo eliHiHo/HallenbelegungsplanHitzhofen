@@ -4,15 +4,15 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 public class Booking {
 
-    private final Long id;
+    private final UUID id;
     private String title;
     private String description;
-    private LocalDate date;
-    private LocalDateTime startDateTime;
-    private LocalDateTime endDateTime;
+    private LocalDateTime startAt;
+    private LocalDateTime endAt;
     private BookingStatus status;
     private Integer participantCount;
     private boolean conducted;
@@ -25,12 +25,11 @@ public class Booking {
     private Instant updatedAt;
 
     public Booking(
-            Long id,
+            UUID id,
             String title,
             String description,
-            LocalDate date,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
             BookingStatus status,
             Integer participantCount,
             boolean conducted,
@@ -45,9 +44,8 @@ public class Booking {
         this.id = id;
         this.title = Objects.requireNonNull(title);
         this.description = description;
-        this.date = Objects.requireNonNull(date);
-        this.startDateTime = Objects.requireNonNull(startDateTime);
-        this.endDateTime = Objects.requireNonNull(endDateTime);
+        this.startAt = Objects.requireNonNull(startAt);
+        this.endAt = Objects.requireNonNull(endAt);
         this.status = Objects.requireNonNull(status);
         this.participantCount = participantCount;
         this.conducted = conducted;
@@ -63,9 +61,8 @@ public class Booking {
     public static Booking createNew(
             String title,
             String description,
-            LocalDate date,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
             Hall hall,
             User responsibleUser,
             BookingSeries bookingSeries
@@ -76,9 +73,8 @@ public class Booking {
                 null,
                 title,
                 description,
-                date,
-                startDateTime,
-                endDateTime,
+                startAt,
+                endAt,
                 BookingStatus.APPROVED,
                 null,
                 false,
@@ -92,7 +88,7 @@ public class Booking {
         );
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
@@ -104,16 +100,13 @@ public class Booking {
         return description;
     }
 
-    public LocalDate getDate() {
-        return date;
+
+    public LocalDateTime getstartAt() {
+        return startAt;
     }
 
-    public LocalDateTime getStartDateTime() {
-        return startDateTime;
-    }
-
-    public LocalDateTime getEndDateTime() {
-        return endDateTime;
+    public LocalDateTime getendAt() {
+        return endAt;
     }
 
     public BookingStatus getStatus() {
@@ -168,15 +161,14 @@ public class Booking {
             String title,
             String description,
             LocalDate date,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
             Hall hall
     ) {
         this.title = Objects.requireNonNull(title);
         this.description = description;
-        this.date = Objects.requireNonNull(date);
-        this.startDateTime = Objects.requireNonNull(startDateTime);
-        this.endDateTime = Objects.requireNonNull(endDateTime);
+        this.startAt = Objects.requireNonNull(startAt);
+        this.endAt = Objects.requireNonNull(endAt);
         this.hall = Objects.requireNonNull(hall);
         this.updatedAt = Instant.now();
     }

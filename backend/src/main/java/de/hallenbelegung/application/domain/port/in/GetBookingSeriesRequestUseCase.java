@@ -2,6 +2,8 @@ package de.hallenbelegung.application.domain.port.in;
 
 import de.hallenbelegung.application.domain.model.BookingSeriesRequest;
 
+import java.util.UUID;
+
 public interface GetBookingSeriesRequestUseCase {
-    BookingSeriesRequest getById(Long currentUserId, Long bookingSeriesRequestId);
+    BookingSeriesRequest getById(UUID currentUserId, UUID bookingSeriesRequestId);
 }

@@ -1,11 +1,13 @@
 package de.hallenbelegung.application.domain.view;
 
+import java.util.UUID;
+
 public class SessionUserView {
 
     private final String sessionId;
-    private final Long userId;
+    private final UUID userId;
 
-    public SessionUserView(String sessionId, Long userId) {
+    public SessionUserView(String sessionId, UUID userId) {
         this.sessionId = sessionId;
         this.userId = userId;
     }
@@ -14,7 +16,7 @@ public class SessionUserView {
         return sessionId;
     }
 
-    public Long getUserId() {
+    public UUID getUserId() {
         return userId;
     }
 }

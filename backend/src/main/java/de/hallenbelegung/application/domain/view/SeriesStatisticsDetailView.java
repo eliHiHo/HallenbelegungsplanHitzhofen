@@ -1,10 +1,11 @@
 package de.hallenbelegung.application.domain.view;
 
 import java.util.List;
+import java.util.UUID;
 
 public class SeriesStatisticsDetailView {
 
-    private final Long bookingSeriesId;
+    private final UUID bookingSeriesId;
     private final String title;
     private final String hallName;
     private final String responsibleUserName;
@@ -15,7 +16,7 @@ public class SeriesStatisticsDetailView {
     private final double averageParticipants;
     private final List<SeriesOccurrenceStatisticsView> occurrences;
 
-    public SeriesStatisticsDetailView(Long bookingSeriesId,
+    public SeriesStatisticsDetailView(UUID bookingSeriesId,
                                       String title,
                                       String hallName,
                                       String responsibleUserName,
@@ -37,7 +38,7 @@ public class SeriesStatisticsDetailView {
         this.occurrences = occurrences;
     }
 
-    public Long getBookingSeriesId() {
+    public UUID getBookingSeriesId() {
         return bookingSeriesId;
     }
 

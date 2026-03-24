@@ -4,15 +4,16 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 public class BookingRequest {
 
-    private final Long id;
+    private final UUID id;
     private String title;
     private String description;
     private LocalDate date;
-    private LocalDateTime startDateTime;
-    private LocalDateTime endDateTime;
+    private LocalDateTime startAt;
+    private LocalDateTime endAt;
     private BookingRequestStatus status;
     private String rejectionReason;
     private Hall hall;
@@ -21,12 +22,12 @@ public class BookingRequest {
     private Instant updatedAt;
 
     public BookingRequest(
-            Long id,
+            UUID id,
             String title,
             String description,
             LocalDate date,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
             BookingRequestStatus status,
             String rejectionReason,
             Hall hall,
@@ -38,8 +39,8 @@ public class BookingRequest {
         this.title = Objects.requireNonNull(title);
         this.description = description;
         this.date = Objects.requireNonNull(date);
-        this.startDateTime = Objects.requireNonNull(startDateTime);
-        this.endDateTime = Objects.requireNonNull(endDateTime);
+        this.startAt = Objects.requireNonNull(startAt);
+        this.endAt = Objects.requireNonNull(endAt);
         this.status = Objects.requireNonNull(status);
         this.rejectionReason = rejectionReason;
         this.hall = Objects.requireNonNull(hall);
@@ -52,8 +53,8 @@ public class BookingRequest {
             String title,
             String description,
             LocalDate date,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
             Hall hall,
             User requestingUser
     ) {
@@ -64,9 +65,9 @@ public class BookingRequest {
                 title,
                 description,
                 date,
-                startDateTime,
-                endDateTime,
-                BookingRequestStatus.OPEN,
+                startAt,
+                endAt,
+                BookingRequestStatus.PENDING,
                 null,
                 hall,
                 requestingUser,
@@ -75,7 +76,7 @@ public class BookingRequest {
         );
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
@@ -91,12 +92,12 @@ public class BookingRequest {
         return date;
     }
 
-    public LocalDateTime getStartDateTime() {
-        return startDateTime;
+    public LocalDateTime getstartAt() {
+        return startAt;
     }
 
-    public LocalDateTime getEndDateTime() {
-        return endDateTime;
+    public LocalDateTime getendAt() {
+        return endAt;
     }
 
     public BookingRequestStatus getStatus() {
@@ -124,7 +125,7 @@ public class BookingRequest {
     }
 
     public boolean isOpen() {
-        return status == BookingRequestStatus.OPEN;
+        return status == BookingRequestStatus.PENDING;
     }
 
     public boolean isApproved() {

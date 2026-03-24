@@ -12,6 +12,7 @@ import jakarta.transaction.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 
 
 @Transactional
@@ -41,7 +42,7 @@ public class HallService implements GetHallUseCase, ManageHallUseCase {
      * Liefert eine einzelne Halle, sofern sie aktiv ist.
      * Für öffentliche Nutzung bzw. normale Standardabfragen gedacht.
      */
-    public Hall getById(Long hallId) {
+    public Hall getById(UUID hallId) {
         Hall hall = hallRepository.findById(hallId)
                 .orElseThrow(() -> new NotFoundException("Hall not found"));
 
@@ -56,7 +57,7 @@ public class HallService implements GetHallUseCase, ManageHallUseCase {
      * Admin-Funktion:
      * liefert alle Hallen inklusive inaktiver Hallen.
      */
-    public List<Hall> getAllIncludingInactive(Long currentUserId) {
+    public List<Hall> getAllIncludingInactive(UUID currentUserId) {
         User user = loadActiveUser(currentUserId);
 
         if (!user.isAdmin()) {
@@ -73,7 +74,7 @@ public class HallService implements GetHallUseCase, ManageHallUseCase {
      * Admin-Funktion:
      * lädt eine Halle unabhängig vom Aktivstatus.
      */
-    public Hall getByIdIncludingInactive(Long currentUserId, Long hallId) {
+    public Hall getByIdIncludingInactive(UUID currentUserId, UUID hallId) {
         User user = loadActiveUser(currentUserId);
 
         if (!user.isAdmin()) {
@@ -84,7 +85,7 @@ public class HallService implements GetHallUseCase, ManageHallUseCase {
                 .orElseThrow(() -> new NotFoundException("Hall not found"));
     }
 
-    private User loadActiveUser(Long userId) {
+    private User loadActiveUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 

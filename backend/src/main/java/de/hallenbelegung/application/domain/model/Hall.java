@@ -2,10 +2,11 @@ package de.hallenbelegung.application.domain.model;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 public class Hall {
 
-    private final Long id;
+    private final UUID id;
     private String name;
     private String description;
     private boolean active;
@@ -14,7 +15,7 @@ public class Hall {
     private HallType hallType;
 
     public Hall(
-            Long id,
+            UUID id,
             String name,
             String description,
             boolean active,
@@ -45,7 +46,7 @@ public class Hall {
         );
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 

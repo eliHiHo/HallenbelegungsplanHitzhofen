@@ -4,6 +4,7 @@ import de.hallenbelegung.application.domain.exception.ForbiddenException;
 import de.hallenbelegung.application.domain.exception.NotFoundException;
 import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.BlockedTime;
+import de.hallenbelegung.application.domain.model.BlockedTimeType;
 import de.hallenbelegung.application.domain.model.Hall;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.CreateBlockedTimeUseCase;
@@ -19,6 +20,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 
 @Transactional
@@ -47,12 +49,11 @@ public class BlockedTimeService implements
         this.config = config;
         this.clock = clock;
     }
-    @Override
-    public void create(Long hallId,
+    public void create(UUID hallId,
                        String reason,
                        LocalDateTime startTime,
                        LocalDateTime endTime,
-                       Long adminUserId) {
+                       UUID adminUserId) {
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new NotFoundException("Admin user not found"));
         if (!admin.isAdmin()) {
@@ -75,7 +76,9 @@ public class BlockedTimeService implements
                 reason,
                 startTime,
                 endTime,
-                hall
+                BlockedTimeType.MANUAL,
+                hall,
+                admin
         );
         blockedTimeRepository.save(blockedTime);
     }
@@ -161,7 +164,7 @@ public class BlockedTimeService implements
             throw new BookingConflictException("Conflict with full hall blocked time");
         }
     }
-    public List<BlockedTime> getAll(Long adminUserId) {
+    public List<BlockedTime> getAll(UUID adminUserId) {
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new NotFoundException("Admin user not found"));
         if (!admin.isAdmin()) {
@@ -172,10 +175,10 @@ public class BlockedTimeService implements
         }
         return blockedTimeRepository.findAll()
                 .stream()
-                .sorted((a, b) -> a.getStartDateTime().compareTo(b.getStartDateTime()))
+                .sorted((a, b) -> a.getStartAt().compareTo(b.getStartAt()))
                 .toList();
     }
-    public void delete(Long blockedTimeId, Long adminUserId) {
+    public void delete(UUID blockedTimeId, UUID adminUserId) {
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new NotFoundException("Admin user not found"));
         if (!admin.isAdmin()) {
@@ -188,7 +191,7 @@ public class BlockedTimeService implements
                 .orElseThrow(() -> new NotFoundException("Blocked time not found"));
         blockedTimeRepository.deleteById(blockedTimeId);
     }
-    public BlockedTime getById(Long adminUserId, Long blockedTimeId) {
+    public BlockedTime getById(UUID adminUserId, UUID blockedTimeId) {
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new NotFoundException("Admin user not found"));
         if (!admin.isAdmin()) {

@@ -4,12 +4,13 @@ import de.hallenbelegung.application.domain.model.Hall;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface HallRepositoryPort {
 
     Hall save(Hall hall);
 
-    Optional<Hall> findById(Long hallId);
+    Optional<Hall> findById(UUID hallId);
 
     List<Hall> findAll();
 

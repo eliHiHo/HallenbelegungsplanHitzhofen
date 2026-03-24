@@ -17,6 +17,7 @@ import jakarta.transaction.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 @ApplicationScoped
 @Transactional
@@ -36,7 +37,7 @@ public class UserService implements
     }
 
     @Override
-    public List<User> getAllUsers(Long adminUserId) {
+    public List<User> getAllUsers(UUID adminUserId) {
         User admin = loadActiveAdmin(adminUserId);
 
         return userRepository.findAll()
@@ -46,13 +47,13 @@ public class UserService implements
     }
 
     @Override
-    public User getUserById(Long adminUserId, Long userId) {
+    public User getUserById(UUID adminUserId, UUID userId) {
         User admin = loadActiveAdmin(adminUserId);
         return loadUser(userId);
     }
 
     @Override
-    public Long createUser(Long adminUserId,
+    public UUID createUser(UUID adminUserId,
                            String firstName,
                            String lastName,
                            String email,
@@ -84,8 +85,8 @@ public class UserService implements
     }
 
     @Override
-    public void updateUser(Long adminUserId,
-                           Long userId,
+    public void updateUser(UUID adminUserId,
+                           UUID userId,
                            String firstName,
                            String lastName,
                            String email,
@@ -126,7 +127,7 @@ public class UserService implements
         userRepository.save(user);
     }
 
-    private User loadActiveAdmin(Long userId) {
+    private User loadActiveAdmin(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
@@ -141,12 +142,12 @@ public class UserService implements
         return user;
     }
 
-    private User loadUser(Long userId) {
+    private User loadUser(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
     }
 
-    private void ensureEmailNotTaken(String normalizedEmail, Long currentUserId) {
+    private void ensureEmailNotTaken(String normalizedEmail, UUID currentUserId) {
         userRepository.findByEmail(normalizedEmail).ifPresent(existingUser -> {
             boolean sameUser = currentUserId != null && existingUser.getId().equals(currentUserId);
             if (!sameUser) {

@@ -13,11 +13,11 @@ import de.hallenbelegung.application.domain.port.in.GetUserBookingSeriesUseCase;
 import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingSeriesRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import de.hallenbelegung.application.domain.port.out.NotificationPort;
 
 import java.util.List;
+import java.util.UUID;
 
 @Transactional
 public class BookingSeriesService implements
@@ -44,7 +44,7 @@ public class BookingSeriesService implements
         this.notificationPort = notificationPort;
     }
 
-    public BookingSeries getById(Long currentUserId, Long bookingSeriesId) {
+    public BookingSeries getById(UUID currentUserId, UUID bookingSeriesId) {
         User user = loadActiveUser(currentUserId);
         BookingSeries bookingSeries = loadSeries(bookingSeriesId);
 
@@ -55,7 +55,7 @@ public class BookingSeriesService implements
         throw new ForbiddenException("User not allowed to view this booking series");
     }
 
-    public List<BookingSeries> getSeriesByUser(Long userId) {
+    public List<BookingSeries> getSeriesByUser(UUID userId) {
         User user = loadActiveUser(userId);
 
         return bookingSeriesRepository.findByResponsibleUserId(user.getId())
@@ -64,7 +64,7 @@ public class BookingSeriesService implements
                 .toList();
     }
 
-    public void cancelSeries(Long currentUserId, Long bookingSeriesId, String cancellationReason) {
+    public void cancelSeries(UUID currentUserId, UUID bookingSeriesId, String cancellationReason) {
         User user = loadActiveUser(currentUserId);
         BookingSeries bookingSeries = loadSeries(bookingSeriesId);
 
@@ -76,7 +76,7 @@ public class BookingSeriesService implements
             throw new ValidationException("Booking series is already cancelled");
         }
 
-        bookingSeries.cancel(cancellationReason);
+        bookingSeries.cancel(user, cancellationReason);
         bookingSeriesRepository.save(bookingSeries);
 
         List<Booking> bookings = bookingRepository.findByBookingSeriesId(bookingSeries.getId());
@@ -96,9 +96,9 @@ public class BookingSeriesService implements
         }
     }
 
-    public void cancelSingleOccurrence(Long currentUserId,
-                                       Long bookingSeriesId,
-                                       Long bookingId,
+    public void cancelSingleOccurrence(UUID currentUserId,
+                                       UUID bookingSeriesId,
+                                       UUID bookingId,
                                        String cancellationReason) {
 
         User user = loadActiveUser(currentUserId);
@@ -129,7 +129,7 @@ public class BookingSeriesService implements
         bookingRepository.save(booking);
     }
 
-    private User loadActiveUser(Long userId) {
+    private User loadActiveUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
@@ -140,12 +140,12 @@ public class BookingSeriesService implements
         return user;
     }
 
-    private BookingSeries loadSeries(Long bookingSeriesId) {
+    private BookingSeries loadSeries(UUID bookingSeriesId) {
         return bookingSeriesRepository.findById(bookingSeriesId)
                 .orElseThrow(() -> new NotFoundException("Booking series not found"));
     }
 
-    private Booking loadBooking(Long bookingId) {
+    private Booking loadBooking(UUID bookingId) {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Booking not found"));
     }

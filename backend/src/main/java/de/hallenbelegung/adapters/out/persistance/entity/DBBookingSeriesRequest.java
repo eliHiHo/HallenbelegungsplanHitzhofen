@@ -1,6 +1,6 @@
 package de.hallenbelegung.adapters.out.persistance.entity;
 
-import de.hallenbelegung.application.domain.model.BookingSeriesStatus;
+import de.hallenbelegung.application.domain.model.BookingRequestStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -13,15 +13,16 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        name = "booking_series",
+        name = "booking_series_requests",
         indexes = {
-                @Index(name = "idx_series_hall", columnList = "hall_id"),
-                @Index(name = "idx_series_responsible_user", columnList = "responsible_user_id"),
-                @Index(name = "idx_series_status", columnList = "status"),
-                @Index(name = "idx_series_start_end_date", columnList = "start_date,end_date")
+                @Index(name = "idx_booking_series_requests_hall", columnList = "hall_id"),
+                @Index(name = "idx_booking_series_requests_requested_by", columnList = "requested_by_user_id"),
+                @Index(name = "idx_booking_series_requests_processed_by", columnList = "processed_by_user_id"),
+                @Index(name = "idx_booking_series_requests_status", columnList = "status"),
+                @Index(name = "idx_booking_series_requests_start_end_date", columnList = "start_date,end_date")
         }
 )
-public class DBBookingSeries {
+public class DBBookingSeriesRequest {
 
     @Id
     @GeneratedValue
@@ -51,30 +52,22 @@ public class DBBookingSeries {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
-    private BookingSeriesStatus status;
+    private BookingRequestStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "hall_id", nullable = false)
     private DBHall hall;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "responsible_user_id", nullable = false)
-    private DBUser responsibleUser;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "created_by_user_id", nullable = false)
-    private DBUser createdBy;
+    @JoinColumn(name = "requested_by_user_id", nullable = false)
+    private DBUser requestedBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "updated_by_user_id")
-    private DBUser updatedBy;
+    @JoinColumn(name = "processed_by_user_id")
+    private DBUser processedBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cancelled_by_user_id")
-    private DBUser cancelledBy;
-
-    @Column(name = "cancel_reason", columnDefinition = "TEXT")
-    private String cancelReason;
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -84,10 +77,10 @@ public class DBBookingSeries {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @Column(name = "cancelled_at")
-    private Instant cancelledAt;
+    @Column(name = "processed_at")
+    private Instant processedAt;
 
-    protected DBBookingSeries() {
+    protected DBBookingSeriesRequest() {
     }
 
     public UUID getId() {
@@ -154,11 +147,11 @@ public class DBBookingSeries {
         this.endDate = endDate;
     }
 
-    public BookingSeriesStatus getStatus() {
+    public BookingRequestStatus getStatus() {
         return status;
     }
 
-    public void setStatus(BookingSeriesStatus status) {
+    public void setStatus(BookingRequestStatus status) {
         this.status = status;
     }
 
@@ -170,44 +163,28 @@ public class DBBookingSeries {
         this.hall = hall;
     }
 
-    public DBUser getResponsibleUser() {
-        return responsibleUser;
+    public DBUser getRequestedBy() {
+        return requestedBy;
     }
 
-    public void setResponsibleUser(DBUser responsibleUser) {
-        this.responsibleUser = responsibleUser;
+    public void setRequestedBy(DBUser requestedBy) {
+        this.requestedBy = requestedBy;
     }
 
-    public DBUser getCreatedBy() {
-        return createdBy;
+    public DBUser getProcessedBy() {
+        return processedBy;
     }
 
-    public void setCreatedBy(DBUser createdBy) {
-        this.createdBy = createdBy;
+    public void setProcessedBy(DBUser processedBy) {
+        this.processedBy = processedBy;
     }
 
-    public DBUser getUpdatedBy() {
-        return updatedBy;
+    public String getRejectionReason() {
+        return rejectionReason;
     }
 
-    public void setUpdatedBy(DBUser updatedBy) {
-        this.updatedBy = updatedBy;
-    }
-
-    public DBUser getCancelledBy() {
-        return cancelledBy;
-    }
-
-    public void setCancelledBy(DBUser cancelledBy) {
-        this.cancelledBy = cancelledBy;
-    }
-
-    public String getCancelReason() {
-        return cancelReason;
-    }
-
-    public void setCancelReason(String cancelReason) {
-        this.cancelReason = cancelReason;
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 
     public Instant getCreatedAt() {
@@ -218,11 +195,11 @@ public class DBBookingSeries {
         return updatedAt;
     }
 
-    public Instant getCancelledAt() {
-        return cancelledAt;
+    public Instant getProcessedAt() {
+        return processedAt;
     }
 
-    public void setCancelledAt(Instant cancelledAt) {
-        this.cancelledAt = cancelledAt;
+    public void setProcessedAt(Instant processedAt) {
+        this.processedAt = processedAt;
     }
 }

@@ -1,10 +1,11 @@
 package de.hallenbelegung.application.domain.view;
 
 import java.util.List;
+import java.util.UUID;
 
 public class HallStatisticsView {
 
-    private final Long hallId;
+    private final UUID hallId;
     private final String hallName;
     private final long totalBookings;
     private final long cancelledBookings;
@@ -12,7 +13,7 @@ public class HallStatisticsView {
     private final double utilizationPercent;
     private final List<SeriesUsageView> topSeries;
 
-    public HallStatisticsView(Long hallId,
+    public HallStatisticsView(UUID hallId,
                               String hallName,
                               long totalBookings,
                               long cancelledBookings,
@@ -28,7 +29,7 @@ public class HallStatisticsView {
         this.topSeries = topSeries;
     }
 
-    public Long getHallId() {
+    public UUID getHallId() {
         return hallId;
     }
 

@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import de.hallenbelegung.application.domain.port.out.HallConfigPort;
 
@@ -62,8 +63,8 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         this.notificationPort = notificationPort;
     }
 
-    public Long create(Long userId,
-                       Long hallId,
+    public UUID create(UUID userId,
+                       UUID hallId,
                        String title,
                        String description,
                        DayOfWeek weekday,
@@ -112,7 +113,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         return saved.getId();
     }
 
-    public void approve(Long adminUserId, Long bookingSeriesRequestId) {
+    public void approve(UUID adminUserId, UUID bookingSeriesRequestId) {
 
         User admin = loadActiveUser(adminUserId);
 
@@ -123,7 +124,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         BookingSeriesRequest request = bookingSeriesRequestRepository.findById(bookingSeriesRequestId)
                 .orElseThrow(() -> new NotFoundException("Booking series request not found"));
 
-        if (!request.isOpen()) {
+        if (!request.isPending()) {
             throw new ValidationException("Booking series request is not open");
         }
 
@@ -159,7 +160,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
                 request.getStartDate(),
                 request.getEndDate(),
                 hall,
-                request.getRequestingUser()
+                request.getRequestedBy()
         );
 
         BookingSeries savedSeries = bookingSeriesRepository.save(bookingSeries);
@@ -168,18 +169,17 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
             Booking booking = Booking.createNew(
                     request.getTitle(),
                     request.getDescription(),
-                    date,
                     date.atTime(request.getStartTime()),
                     date.atTime(request.getEndTime()),
                     hall,
-                    request.getRequestingUser(),
+                    request.getRequestedBy(),
                     savedSeries
             );
 
             bookingRepository.save(booking);
         }
 
-        request.approve();
+        request.approve(admin);
         bookingSeriesRequestRepository.save(request);
 
         notificationPort.notifyRequesterAboutBookingSeriesRequestApproved(request, bookingSeries);
@@ -187,7 +187,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         // TODO: Optional Konflikttage für spätere Anzeige/Info separat protokollieren
     }
 
-    public void reject(Long adminUserId, Long bookingSeriesRequestId, String reason) {
+    public void reject(UUID adminUserId, UUID bookingSeriesRequestId, String reason) {
 
         User admin = loadActiveUser(adminUserId);
 
@@ -198,17 +198,17 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         BookingSeriesRequest request = bookingSeriesRequestRepository.findById(bookingSeriesRequestId)
                 .orElseThrow(() -> new NotFoundException("Booking series request not found"));
 
-        if (!request.isOpen()) {
+        if (!request.isPending()) {
             throw new ValidationException("Booking series request is not open");
         }
 
-        request.reject(reason);
+        request.reject(admin, reason);
         bookingSeriesRequestRepository.save(request);
 
         notificationPort.notifyRequesterAboutBookingSeriesRequestRejected(request, reason);
     }
 
-    public List<BookingSeriesRequest> getOpenRequests(Long adminUserId) {
+    public List<BookingSeriesRequest> getOpenRequests(UUID adminUserId) {
 
         User admin = loadActiveUser(adminUserId);
 
@@ -216,13 +216,13 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
             throw new ForbiddenException("User not allowed to view open booking series requests");
         }
 
-        return bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.OPEN)
+        return bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)
                 .stream()
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .toList();
     }
 
-    public List<BookingSeriesRequest> getAllRequests(Long adminUserId) {
+    public List<BookingSeriesRequest> getAllRequests(UUID adminUserId) {
 
         User admin = loadActiveUser(adminUserId);
 
@@ -237,7 +237,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
     }
 
 
-    public List<BookingSeriesRequest> getRequestsByUser(Long userId) {
+    public List<BookingSeriesRequest> getRequestsByUser(UUID userId) {
 
         User user = loadActiveUser(userId);
 
@@ -247,7 +247,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
                 .toList();
     }
 
-    public BookingSeriesRequest getById(Long currentUserId, Long bookingSeriesRequestId) {
+    public BookingSeriesRequest getById(UUID currentUserId, UUID bookingSeriesRequestId) {
 
         User user = loadActiveUser(currentUserId);
 
@@ -258,14 +258,14 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
             return request;
         }
 
-        if (request.getRequestingUser().getId().equals(user.getId())) {
+        if (request.getRequestedBy().getId().equals(user.getId())) {
             return request;
         }
 
         throw new ForbiddenException("User not allowed to view this booking series request");
     }
 
-    private User loadActiveUser(Long userId) {
+    private User loadActiveUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 

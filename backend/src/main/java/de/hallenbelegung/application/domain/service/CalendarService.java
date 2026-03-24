@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 
 @ApplicationScoped
 @Transactional
@@ -54,7 +55,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
     }
 
     @Override
-    public CalendarWeekView getWeek(LocalDate weekStart, Long userId) {
+    public CalendarWeekView getWeek(LocalDate weekStart, UUID userId) {
         User currentUser = resolveCurrentUser(userId);
 
         LocalDate normalizedWeekStart = weekStart;
@@ -71,7 +72,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
     }
 
     @Override
-    public CalendarDayView getDay(LocalDate day, Long userId) {
+    public CalendarDayView getDay(LocalDate day, UUID userId) {
         User currentUser = resolveCurrentUser(userId);
 
         LocalDateTime start = day.atStartOfDay();
@@ -82,7 +83,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
         return new CalendarDayView(day, entries);
     }
 
-    private User resolveCurrentUser(Long userId) {
+    private User resolveCurrentUser(UUID userId) {
         if (userId == null) {
             return null;
         }
@@ -106,30 +107,30 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
 
         List<Booking> bookings = bookingRepository.findByTimeRange(start, end);
         for (Booking booking : bookings) {
-            if (isInRange(booking.getStartDateTime(), booking.getEndDateTime(), start, end)) {
+            if (isInRange(booking.getstartAt(), booking.getendAt(), start, end)) {
                 entries.add(mapBookingToEntry(booking, currentUser));
             }
         }
 
         List<BlockedTime> blockedTimes = blockedTimeRepository.findAllByTimeRange(start, end);
         for (BlockedTime blockedTime : blockedTimes) {
-            if (isInRange(blockedTime.getStartDateTime(), blockedTime.getEndDateTime(), start, end)) {
+            if (isInRange(blockedTime.getStartAt(), blockedTime.getEndAt(), start, end)) {
                 entries.add(mapBlockedTimeToEntry(blockedTime));
             }
         }
 
         if (currentUser != null) {
-            List<BookingRequest> openRequests = bookingRequestRepository.findByStatus(BookingRequestStatus.OPEN);
+            List<BookingRequest> openRequests = bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING);
 
             for (BookingRequest request : openRequests) {
                 if (canSeeBookingRequest(request, currentUser)
-                        && isInRange(request.getStartDateTime(), request.getEndDateTime(), start, end)) {
+                        && isInRange(request.getstartAt(), request.getendAt(), start, end)) {
                     entries.add(mapBookingRequestToEntry(request, currentUser));
                 }
             }
 
             List<BookingSeriesRequest> openSeriesRequests =
-                    bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.OPEN);
+                    bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING);
 
             for (BookingSeriesRequest request : openSeriesRequests) {
                 if (canSeeBookingSeriesRequest(request, currentUser)
@@ -157,7 +158,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
             return true;
         }
 
-        return request.getRequestingUser().getId().equals(currentUser.getId());
+        return request.getRequestedBy().getId().equals(currentUser.getId());
     }
 
     private CalendarEntryView mapBookingToEntry(Booking booking, User currentUser) {
@@ -169,8 +170,8 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 CalendarEntryType.BOOKING,
                 booking.getTitle(),
                 booking.getDescription(),
-                booking.getStartDateTime(),
-                booking.getEndDateTime(),
+                booking.getstartAt(),
+                booking.getendAt(),
                 booking.getHall().getId(),
                 booking.getHall().getName(),
                 booking.getResponsibleUser().getFullName(),
@@ -185,8 +186,8 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 CalendarEntryType.BLOCKED_TIME,
                 blockedTime.getReason(),
                 null,
-                blockedTime.getStartDateTime(),
-                blockedTime.getEndDateTime(),
+                blockedTime.getStartAt(),
+                blockedTime.getEndAt(),
                 blockedTime.getHall().getId(),
                 blockedTime.getHall().getName(),
                 null,
@@ -204,8 +205,8 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 CalendarEntryType.BOOKING_REQUEST,
                 request.getTitle(),
                 request.getDescription(),
-                request.getStartDateTime(),
-                request.getEndDateTime(),
+                request.getstartAt(),
+                request.getendAt(),
                 request.getHall().getId(),
                 request.getHall().getName(),
                 request.getRequestingUser().getFullName(),
@@ -221,7 +222,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
             LocalDateTime rangeEnd
     ) {
         boolean ownEntry = currentUser != null
-                && request.getRequestingUser().getId().equals(currentUser.getId());
+                && request.getRequestedBy().getId().equals(currentUser.getId());
 
         LocalDate firstOccurrence = findFirstOccurrenceInRange(
                 request,
@@ -242,7 +243,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 firstOccurrence.atTime(request.getEndTime()),
                 request.getHall().getId(),
                 request.getHall().getName(),
-                request.getRequestingUser().getFullName(),
+                request.getRequestedBy().getFullName(),
                 request.getStatus().name(),
                 ownEntry
         );

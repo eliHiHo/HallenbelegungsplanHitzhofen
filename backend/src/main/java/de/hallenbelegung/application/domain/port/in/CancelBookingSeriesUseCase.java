@@ -1,5 +1,7 @@
 package de.hallenbelegung.application.domain.port.in;
 
+import java.util.UUID;
+
 public interface CancelBookingSeriesUseCase {
-    void cancelSeries(Long currentUserId, Long bookingSeriesId, String cancellationReason);
+    void cancelSeries(UUID currentUserId, UUID bookingSeriesId, String cancellationReason);
 }

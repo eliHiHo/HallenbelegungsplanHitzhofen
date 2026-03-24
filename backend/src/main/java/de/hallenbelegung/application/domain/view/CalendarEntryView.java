@@ -1,15 +1,16 @@
 package de.hallenbelegung.application.domain.view;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record CalendarEntryView(
-        Long id,
+        UUID id,
         CalendarEntryType type,
         String title,
         String description,
         LocalDateTime startDateTime,
         LocalDateTime endDateTime,
-        Long hallId,
+        UUID hallId,
         String hallName,
         String responsibleUserName,
         String status,

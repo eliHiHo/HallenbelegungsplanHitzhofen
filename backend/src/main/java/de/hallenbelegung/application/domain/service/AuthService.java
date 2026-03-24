@@ -18,6 +18,7 @@ import jakarta.transaction.Transactional;
 
 import java.time.Duration;
 import java.util.Locale;
+import java.util.UUID;
 
 @Transactional
 public class AuthService implements
@@ -143,7 +144,7 @@ public class AuthService implements
         validateResetToken(token);
         validateNewPassword(newPassword);
 
-        Long userId = passwordResetPort.findUserIdByValidToken(token)
+        UUID userId = passwordResetPort.findUserIdByValidToken(token)
                 .orElseThrow(() -> new ValidationException("Reset token invalid or expired"));
 
         User user = userRepository.findById(userId)

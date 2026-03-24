@@ -1,8 +1,10 @@
 package de.hallenbelegung.application.domain.view;
 
+import java.util.UUID;
+
 public class SeriesStatisticsOverviewView {
 
-    private final Long bookingSeriesId;
+    private final UUID bookingSeriesId;
     private final String title;
     private final String hallName;
     private final long totalAppointments;
@@ -11,7 +13,7 @@ public class SeriesStatisticsOverviewView {
     private final long totalParticipants;
     private final double averageParticipants;
 
-    public SeriesStatisticsOverviewView(Long bookingSeriesId,
+    public SeriesStatisticsOverviewView(UUID bookingSeriesId,
                                         String title,
                                         String hallName,
                                         long totalAppointments,
@@ -29,7 +31,7 @@ public class SeriesStatisticsOverviewView {
         this.averageParticipants = averageParticipants;
     }
 
-    public Long getBookingSeriesId() {
+    public UUID getBookingSeriesId() {
         return bookingSeriesId;
     }
 

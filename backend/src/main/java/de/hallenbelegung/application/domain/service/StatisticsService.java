@@ -21,6 +21,7 @@ import de.hallenbelegung.application.domain.view.SeriesStatisticsOverviewView;
 import de.hallenbelegung.application.domain.view.SeriesUsageView;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
+import de.hallenbelegung.application.domain.port.out.HallConfigPort;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,6 +29,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -41,13 +43,13 @@ public class StatisticsService implements
     private final BookingSeriesRepositoryPort bookingSeriesRepository;
     private final HallRepositoryPort hallRepository;
     private final UserRepositoryPort userRepository;
-    private final HallenbelegungConfig config;
+    private final HallConfigPort config;
 
     public StatisticsService(BookingRepositoryPort bookingRepository,
                              BookingSeriesRepositoryPort bookingSeriesRepository,
                              HallRepositoryPort hallRepository,
                              UserRepositoryPort userRepository,
-                             HallenbelegungConfig config) {
+                             HallConfigPort config) {
         this.bookingRepository = bookingRepository;
         this.bookingSeriesRepository = bookingSeriesRepository;
         this.hallRepository = hallRepository;
@@ -56,7 +58,7 @@ public class StatisticsService implements
     }
 
     @Override
-    public List<HallStatisticsView> getHallStatistics(Long currentUserId, LocalDate from, LocalDate to) {
+    public List<HallStatisticsView> getHallStatistics(UUID currentUserId, LocalDate from, LocalDate to) {
         User user = loadActiveUser(currentUserId);
         validateDateRange(from, to);
 
@@ -69,13 +71,13 @@ public class StatisticsService implements
 
         return hallRepository.findAllActive()
                 .stream()
-                .sorted(Comparator.comparing(Hall::getId, Comparator.nullsLast(Long::compareTo)))
+                .sorted(Comparator.comparing(Hall::getId, Comparator.nullsLast(UUID::compareTo)))
                 .map(hall -> buildHallStatistics(hall, rangeStart, rangeEndExclusive, from, to))
                 .toList();
     }
 
     @Override
-    public List<SeriesStatisticsOverviewView> getSeriesStatisticsOverview(Long currentUserId, LocalDate from, LocalDate to) {
+    public List<SeriesStatisticsOverviewView> getSeriesStatisticsOverview(UUID currentUserId, LocalDate from, LocalDate to) {
         User user = loadActiveUser(currentUserId);
         validateDateRange(from, to);
 
@@ -91,7 +93,7 @@ public class StatisticsService implements
     }
 
     @Override
-    public SeriesStatisticsDetailView getSeriesStatisticsDetail(Long currentUserId, Long bookingSeriesId, LocalDate from, LocalDate to) {
+    public SeriesStatisticsDetailView getSeriesStatisticsDetail(UUID currentUserId, UUID bookingSeriesId, LocalDate from, LocalDate to) {
         User user = loadActiveUser(currentUserId);
         validateDateRange(from, to);
 
@@ -125,12 +127,11 @@ public class StatisticsService implements
                 : (double) totalParticipants / participantRelevantBookings.size();
 
         List<SeriesOccurrenceStatisticsView> occurrences = bookings.stream()
-                .sorted(Comparator.comparing(Booking::getStartDateTime))
+                .sorted(Comparator.comparing(Booking::getstartAt))
                 .map(booking -> new SeriesOccurrenceStatisticsView(
                         booking.getId(),
-                        booking.getDate(),
-                        booking.getStartDateTime(),
-                        booking.getEndDateTime(),
+                        booking.getstartAt(),
+                        booking.getendAt(),
                         booking.isCancelled(),
                         booking.isConducted(),
                         booking.getParticipantCount(),
@@ -175,8 +176,8 @@ public class StatisticsService implements
         long bookedMinutes = bookings.stream()
                 .filter(booking -> !booking.isCancelled())
                 .mapToLong(booking -> ChronoUnit.MINUTES.between(
-                        booking.getStartDateTime(),
-                        booking.getEndDateTime()
+                        booking.getstartAt(),
+                        booking.getendAt()
                 ))
                 .sum();
 
@@ -185,7 +186,7 @@ public class StatisticsService implements
                 ? 0.0
                 : ((double) bookedMinutes / totalAvailableMinutes) * 100.0;
 
-        Map<Long, Long> seriesUsageMap = bookings.stream()
+        Map<UUID, Long> seriesUsageMap = bookings.stream()
                 .filter(booking -> !booking.isCancelled())
                 .filter(Booking::belongsToSeries)
                 .collect(Collectors.groupingBy(
@@ -193,7 +194,7 @@ public class StatisticsService implements
                         Collectors.counting()
                 ));
 
-        Map<Long, String> seriesTitleMap = bookings.stream()
+        Map<UUID, String> seriesTitleMap = bookings.stream()
                 .filter(booking -> booking.getBookingSeries() != null)
                 .collect(Collectors.toMap(
                         booking -> booking.getBookingSeries().getId(),
@@ -203,7 +204,7 @@ public class StatisticsService implements
 
         List<SeriesUsageView> topSeries = seriesUsageMap.entrySet()
                 .stream()
-                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
+                .sorted(Map.Entry.<UUID, Long>comparingByValue().reversed())
                 .limit(5)
                 .map(entry -> new SeriesUsageView(
                         entry.getKey(),
@@ -258,7 +259,7 @@ public class StatisticsService implements
         );
     }
 
-    private List<Booking> getBookingsForSeriesInRange(Long bookingSeriesId, LocalDate from, LocalDate to) {
+    private List<Booking> getBookingsForSeriesInRange(UUID bookingSeriesId, LocalDate from, LocalDate to) {
         return bookingRepository.findByBookingSeriesId(bookingSeriesId)
                 .stream()
                 .filter(booking -> isWithinInclusiveDateRange(booking, from, to))
@@ -266,7 +267,7 @@ public class StatisticsService implements
     }
 
     private boolean isWithinInclusiveDateRange(Booking booking, LocalDate from, LocalDate to) {
-        return !booking.getDate().isBefore(from) && !booking.getDate().isAfter(to);
+        return !booking.getstartAt().toLocalDate().isBefore(from) && !booking.getstartAt().toLocalDate().isAfter(to);
     }
 
     private boolean overlaps(BookingSeries series, LocalDate from, LocalDate to) {
@@ -279,7 +280,7 @@ public class StatisticsService implements
         return days * openMinutesPerDay;
     }
 
-    private User loadActiveUser(Long userId) {
+    private User loadActiveUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 

@@ -1,12 +1,11 @@
 package de.hallenbelegung.application.domain.view;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public class SeriesOccurrenceStatisticsView {
 
-    private final Long bookingId;
-    private final LocalDate date;
+    private final UUID bookingId;
     private final LocalDateTime startDateTime;
     private final LocalDateTime endDateTime;
     private final boolean cancelled;
@@ -14,8 +13,7 @@ public class SeriesOccurrenceStatisticsView {
     private final Integer participantCount;
     private final String feedbackComment;
 
-    public SeriesOccurrenceStatisticsView(Long bookingId,
-                                          LocalDate date,
+    public SeriesOccurrenceStatisticsView(UUID bookingId,
                                           LocalDateTime startDateTime,
                                           LocalDateTime endDateTime,
                                           boolean cancelled,
@@ -23,7 +21,6 @@ public class SeriesOccurrenceStatisticsView {
                                           Integer participantCount,
                                           String feedbackComment) {
         this.bookingId = bookingId;
-        this.date = date;
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
         this.cancelled = cancelled;
@@ -32,12 +29,8 @@ public class SeriesOccurrenceStatisticsView {
         this.feedbackComment = feedbackComment;
     }
 
-    public Long getBookingId() {
+    public UUID getBookingId() {
         return bookingId;
-    }
-
-    public LocalDate getDate() {
-        return date;
     }
 
     public LocalDateTime getStartDateTime() {
