@@ -11,6 +11,7 @@ public class Hall {
     private boolean active;
     private final Instant createdAt;
     private Instant updatedAt;
+    private HallType hallType;
 
     public Hall(
             Long id,
@@ -18,7 +19,8 @@ public class Hall {
             String description,
             boolean active,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            HallType hallType
     ) {
         this.id = id;
         this.name = Objects.requireNonNull(name);
@@ -26,9 +28,10 @@ public class Hall {
         this.active = active;
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
+        this.hallType = Objects.requireNonNull(hallType);
     }
 
-    public static Hall createNew(String name, String description) {
+    public static Hall createNew(String name, String description, HallType hallType) {
         Instant now = Instant.now();
 
         return new Hall(
@@ -37,7 +40,8 @@ public class Hall {
                 description,
                 true,
                 now,
-                now
+                now,
+                hallType
         );
     }
 
@@ -80,4 +84,18 @@ public class Hall {
         this.active = false;
         this.updatedAt = Instant.now();
     }
+
+    public HallType getHallType() {
+        return hallType;
+    }
+
+    public void setHallType(HallType hallType) {
+        this.hallType = Objects.requireNonNull(hallType);
+        this.updatedAt = Instant.now();
+    }
+
+    public boolean isFullHall() {
+        return this.hallType == HallType.FULL;
+    }
+
 }
