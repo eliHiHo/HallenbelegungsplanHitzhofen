@@ -172,6 +172,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 booking.getEndDateTime(),
                 booking.getHall().getId(),
                 booking.getHall().getName(),
+                booking.getResponsibleUser().getFullName(),
                 booking.getStatus().name(),
                 ownEntry
         );
@@ -187,6 +188,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 blockedTime.getEndDateTime(),
                 blockedTime.getHall().getId(),
                 blockedTime.getHall().getName(),
+                null,
                 "BLOCKED",
                 false
         );
@@ -205,6 +207,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 request.getEndDateTime(),
                 request.getHall().getId(),
                 request.getHall().getName(),
+                request.getRequestingUser().getFullName(),
                 request.getStatus().name(),
                 ownEntry
         );
@@ -238,6 +241,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 firstOccurrence.atTime(request.getEndTime()),
                 request.getHall().getId(),
                 request.getHall().getName(),
+                request.getRequestingUser().getFullName(),
                 request.getStatus().name(),
                 ownEntry
         );

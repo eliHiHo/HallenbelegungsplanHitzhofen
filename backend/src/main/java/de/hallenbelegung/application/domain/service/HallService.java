@@ -8,13 +8,12 @@ import de.hallenbelegung.application.domain.port.in.GetHallUseCase;
 import de.hallenbelegung.application.domain.port.in.ManageHallUseCase;
 import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
 
-@ApplicationScoped
+
 @Transactional
 public class HallService implements GetHallUseCase, ManageHallUseCase {
 

@@ -16,7 +16,7 @@ import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.NotificationPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
-import jakarta.enterprise.context.ApplicationScoped;
+import de.hallenbelegung.application.domain.view.BookingDetailView;
 import jakarta.transaction.Transactional;
 
 import java.time.Clock;
@@ -24,7 +24,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
-@ApplicationScoped
+import de.hallenbelegung.application.domain.port.out.HallConfigPort;
+
 @Transactional
 public class BookingService implements
         GetBookingUseCase,
@@ -38,7 +39,7 @@ public class BookingService implements
     private final UserRepositoryPort userRepository;
     private final HallRepositoryPort hallRepository;
     private final BlockedTimeRepositoryPort blockedTimeRepository;
-    private final HallenbelegungConfig config;
+    private final HallConfigPort config;
     private final Clock clock;
 
     public BookingService(
@@ -47,7 +48,7 @@ public class BookingService implements
             NotificationPort notificationPort,
             HallRepositoryPort hallRepository,
             BlockedTimeRepositoryPort blockedTimeRepository,
-            HallenbelegungConfig config,
+            HallConfigPort config,
             Clock clock
     ) {
         this.notificationPort = notificationPort;
@@ -60,15 +61,24 @@ public class BookingService implements
     }
 
     @Override
-    public Booking getById(Long currentUserId, Long bookingId) {
-        User user = loadActiveUser(currentUserId);
+    public BookingDetailView getById(Long currentUserId, Long bookingId) {
         Booking booking = loadBooking(bookingId);
 
-        if (user.isAdmin() || isResponsibleUser(user, booking)) {
-            return booking;
+        if (currentUserId == null) {
+            return toBookingDetailView(booking, false, false, false);
         }
 
-        throw new ForbiddenException("User not allowed to view this booking");
+        User user = loadActiveUser(currentUserId);
+
+        if (user.isAdmin()) {
+            return toBookingDetailView(booking, true, true, true);
+        }
+
+        if (isResponsibleUser(user, booking)) {
+            return toBookingDetailView(booking, true, false, true);
+        }
+
+        return toBookingDetailView(booking, false, false, false);
     }
 
     @Override
@@ -220,8 +230,14 @@ public class BookingService implements
             throw new ValidationException("Start must be before end");
         }
 
-        if (startTime.isBefore(LocalDateTime.now(clock))) {
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        if (startTime.isBefore(now)) {
             throw new ValidationException("Cannot move booking into the past");
+        }
+
+        if (startTime.isAfter(now.plusYears(1))) {
+            throw new ValidationException("Booking must not be more than one year in advance");
         }
     }
 
@@ -305,5 +321,27 @@ public class BookingService implements
         if (fullHallBlockedConflict) {
             throw new ValidationException("Conflict with full hall blocked time");
         }
+    }
+
+    private BookingDetailView toBookingDetailView(Booking booking,
+                                                  boolean canViewFeedback,
+                                                  boolean canEdit,
+                                                  boolean canCancel) {
+        return new BookingDetailView(
+                booking.getId(),
+                booking.getTitle(),
+                booking.getDescription(),
+                booking.getStartDateTime(),
+                booking.getEndDateTime(),
+                booking.getHall().getId(),
+                booking.getHall().getName(),
+                booking.getStatus().name(),
+                booking.getResponsibleUser().getFullName(),
+                canViewFeedback ? booking.getParticipantCount() : null,
+                canViewFeedback ? booking.getFeedbackComment() : null,
+                canViewFeedback,
+                canEdit,
+                canCancel
+        );
     }
 }

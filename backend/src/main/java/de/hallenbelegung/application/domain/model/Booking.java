@@ -181,13 +181,6 @@ public class Booking {
         this.updatedAt = Instant.now();
     }
 
-    public void updateFeedback(Integer participantCount, boolean conducted, String feedbackComment) {
-        this.participantCount = participantCount;
-        this.conducted = conducted;
-        this.feedbackComment = feedbackComment;
-        this.updatedAt = Instant.now();
-    }
-
     public void cancel(String cancellationReason) {
         this.status = BookingStatus.CANCELLED;
         this.cancellationReason = cancellationReason;

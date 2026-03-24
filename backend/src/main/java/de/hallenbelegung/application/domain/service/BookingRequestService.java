@@ -18,13 +18,13 @@ import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import de.hallenbelegung.application.domain.port.out.NotificationPort;
+import de.hallenbelegung.application.domain.port.out.HallConfigPort;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
-@ApplicationScoped
 @Transactional
 public class BookingRequestService implements
         ApproveBookingRequestUseCase,
@@ -38,7 +38,7 @@ public class BookingRequestService implements
     private final BlockedTimeRepositoryPort blockedTimeRepository;
     private final UserRepositoryPort userRepository;
     private final HallRepositoryPort hallRepository;
-    private final HallenbelegungConfig config;
+    private final HallConfigPort config;
     private final Clock clock;
     private final NotificationPort notificationPort;
 
@@ -48,7 +48,7 @@ public class BookingRequestService implements
             BlockedTimeRepositoryPort blockedTimeRepository,
             UserRepositoryPort userRepository,
             HallRepositoryPort hallRepository,
-            HallenbelegungConfig config,
+            HallConfigPort config,
             Clock clock,
             NotificationPort notificationPort
     ) {
@@ -291,7 +291,9 @@ public class BookingRequestService implements
                                    LocalDateTime end) {
 
         if (requestedHall.isFullHall()) {
-            boolean bookingConflict = !bookingRepository.findByTimeRange(start, end).isEmpty();
+            boolean bookingConflict = bookingRepository.findByTimeRange(start, end)
+                    .stream()
+                    .anyMatch(existing -> !existing.isCancelled());
             if (bookingConflict) {
                 throw new BookingConflictException("Conflict with existing booking");
             }
@@ -304,9 +306,10 @@ public class BookingRequestService implements
             return;
         }
 
-        boolean sameHallBookingConflict = !bookingRepository
+        boolean sameHallBookingConflict = bookingRepository
                 .findByHallIdAndTimeRange(requestedHall.getId(), start, end)
-                .isEmpty();
+                .stream()
+                .anyMatch(existing -> !existing.isCancelled());
 
         if (sameHallBookingConflict) {
             throw new BookingConflictException("Conflict with existing booking");
@@ -315,7 +318,7 @@ public class BookingRequestService implements
         boolean fullHallBookingConflict = bookingRepository
                 .findByTimeRange(start, end)
                 .stream()
-                .anyMatch(booking -> booking.getHall().isFullHall());
+                .anyMatch(booking -> !booking.isCancelled() && booking.getHall().isFullHall());
 
         if (fullHallBookingConflict) {
             throw new BookingConflictException("Conflict with full hall booking");

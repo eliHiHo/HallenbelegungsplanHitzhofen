@@ -15,10 +15,10 @@ import de.hallenbelegung.application.domain.port.out.BookingSeriesRepositoryPort
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
+import de.hallenbelegung.application.domain.port.out.NotificationPort;
 
 import java.util.List;
 
-@ApplicationScoped
 @Transactional
 public class BookingSeriesService implements
         GetBookingSeriesUseCase,
@@ -30,15 +30,18 @@ public class BookingSeriesService implements
     private final BookingSeriesRepositoryPort bookingSeriesRepository;
     private final BookingRepositoryPort bookingRepository;
     private final UserRepositoryPort userRepository;
+    private final NotificationPort notificationPort;
 
     public BookingSeriesService(
             BookingSeriesRepositoryPort bookingSeriesRepository,
             BookingRepositoryPort bookingRepository,
-            UserRepositoryPort userRepository
+            UserRepositoryPort userRepository,
+            NotificationPort notificationPort
     ) {
         this.bookingSeriesRepository = bookingSeriesRepository;
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
+        this.notificationPort = notificationPort;
     }
 
     public BookingSeries getById(Long currentUserId, Long bookingSeriesId) {
@@ -85,7 +88,12 @@ public class BookingSeriesService implements
             }
         }
 
-        // TODO: NotificationPort für Info an betroffene Nutzer/Admin
+        if (user.isAdmin()) {
+            notificationPort.notifyRequesterAboutBookingSeriesCancelledByAdmin(
+                    bookingSeries,
+                    cancellationReason
+            );
+        }
     }
 
     public void cancelSingleOccurrence(Long currentUserId,

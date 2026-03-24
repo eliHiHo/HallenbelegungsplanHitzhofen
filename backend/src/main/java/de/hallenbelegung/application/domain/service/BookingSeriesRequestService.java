@@ -24,7 +24,8 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@ApplicationScoped
+import de.hallenbelegung.application.domain.port.out.HallConfigPort;
+
 @Transactional
 public class BookingSeriesRequestService implements ApproveBookingSeriesRequestUseCase,
         RejectBookingSeriesRequestUseCase,
@@ -39,7 +40,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
     private final BlockedTimeRepositoryPort blockedTimeRepository;
     private final UserRepositoryPort userRepository;
     private final HallRepositoryPort hallRepository;
-    private final HallenbelegungConfig config;
+    private final HallConfigPort config;
     private final Clock clock;
     private final NotificationPort notificationPort;
 
@@ -50,7 +51,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
             BlockedTimeRepositoryPort blockedTimeRepository,
             UserRepositoryPort userRepository,
             HallRepositoryPort hallRepository,
-            HallenbelegungConfig config,
+            HallConfigPort config,
             Clock clock,
             NotificationPort notificationPort
     ) {
@@ -352,12 +353,15 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
 
     private boolean hasBookingConflict(Hall requestedHall, LocalDateTime start, LocalDateTime end) {
         if (requestedHall.isFullHall()) {
-            return !bookingRepository.findByTimeRange(start, end).isEmpty();
+            return bookingRepository.findByTimeRange(start, end)
+                    .stream()
+                    .anyMatch(existing -> !existing.isCancelled());
         }
 
-        boolean sameHallConflict = !bookingRepository
+        boolean sameHallConflict = bookingRepository
                 .findByHallIdAndTimeRange(requestedHall.getId(), start, end)
-                .isEmpty();
+                .stream()
+                .anyMatch(existing -> !existing.isCancelled());
 
         if (sameHallConflict) {
             return true;
@@ -365,7 +369,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
 
         return bookingRepository.findByTimeRange(start, end)
                 .stream()
-                .anyMatch(booking -> booking.getHall().isFullHall());
+                .anyMatch(booking -> !booking.isCancelled() && booking.getHall().isFullHall());
     }
 
     private boolean hasBlockedTimeConflict(Hall requestedHall, LocalDateTime start, LocalDateTime end) {

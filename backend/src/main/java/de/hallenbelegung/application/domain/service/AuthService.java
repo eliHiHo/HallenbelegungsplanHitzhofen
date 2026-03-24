@@ -14,13 +14,11 @@ import de.hallenbelegung.application.domain.port.out.SessionPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import de.hallenbelegung.application.domain.view.AuthSessionView;
 import de.hallenbelegung.application.domain.view.SessionUserView;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
 import java.time.Duration;
 import java.util.Locale;
 
-@ApplicationScoped
 @Transactional
 public class AuthService implements
         LoginUseCase,
