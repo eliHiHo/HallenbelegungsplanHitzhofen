@@ -31,56 +31,11 @@ public class BookingService implements
         this.userRepository = userRepository;
     }
 
-    public void cancel(Long currentUserId, Long bookingId, String cancellationReason) {
-
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        if (!user.isActive()) {
-            throw new ForbiddenException("User inactive");
-        }
-
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new NotFoundException("Booking not found"));
-
-        if (booking.isCancelled()) {
-            throw new ValidationException("Booking is already cancelled");
-        }
-
-        boolean isAdmin = user.isAdmin();
-        boolean isResponsibleUser = booking.getResponsibleUser().getId().equals(user.getId());
-
-        if (!isAdmin && !isResponsibleUser) {
-            throw new ForbiddenException("User not allowed to cancel this booking");
-        }
-
-        booking.cancel(cancellationReason);
-        bookingRepository.save(booking);
-
-        // TODO: NotificationPort verwenden, um betroffene Nutzer über Stornierung zu informieren
-    }
-
     public Booking getById(Long currentUserId, Long bookingId) {
+        User user = loadActiveUser(currentUserId);
+        Booking booking = loadBooking(bookingId);
 
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        if (!user.isActive()) {
-            throw new ForbiddenException("User inactive");
-        }
-
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new NotFoundException("Booking not found"));
-
-        if (user.isAdmin()) {
-            return booking;
-        }
-
-        boolean isResponsibleUser = booking.getResponsibleUser()
-                .getId()
-                .equals(user.getId());
-
-        if (isResponsibleUser) {
+        if (user.isAdmin() || isResponsibleUser(user, booking)) {
             return booking;
         }
 
@@ -88,52 +43,48 @@ public class BookingService implements
     }
 
     public List<Booking> getBookingsByUser(Long userId) {
+        User user = loadActiveUser(userId);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        if (!user.isActive()) {
-            throw new ForbiddenException("User inactive");
-        }
-
-        return bookingRepository
-                .findByResponsibleUserId(userId)
+        return bookingRepository.findByResponsibleUserId(user.getId())
                 .stream()
                 .sorted((a, b) -> b.getStartDateTime().compareTo(a.getStartDateTime()))
                 .toList();
+    }
+
+    public void cancel(Long currentUserId, Long bookingId, String cancellationReason) {
+        User user = loadActiveUser(currentUserId);
+        Booking booking = loadBooking(bookingId);
+
+        if (booking.isCancelled()) {
+            throw new ValidationException("Booking is already cancelled");
+        }
+
+        if (!user.isAdmin() && !isResponsibleUser(user, booking)) {
+            throw new ForbiddenException("User not allowed to cancel this booking");
+        }
+
+        booking.cancel(cancellationReason);
+        bookingRepository.save(booking);
+
+        // später: NotificationPort
     }
 
     public void addFeedback(Long currentUserId,
                             Long bookingId,
                             Integer participantCount,
                             String feedbackComment) {
-
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        if (!user.isActive()) {
-            throw new ForbiddenException("User inactive");
-        }
-
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new NotFoundException("Booking not found"));
+        User user = loadActiveUser(currentUserId);
+        Booking booking = loadBooking(bookingId);
 
         if (booking.isCancelled()) {
             throw new ValidationException("Cannot add feedback to cancelled booking");
         }
 
-        boolean isAdmin = user.isAdmin();
-        boolean isResponsibleUser = booking.getResponsibleUser()
-                .getId()
-                .equals(user.getId());
-
-        if (!isAdmin && !isResponsibleUser) {
+        if (!user.isAdmin() && !isResponsibleUser(user, booking)) {
             throw new ForbiddenException("User not allowed to add feedback to this booking");
         }
 
-        if (participantCount != null && participantCount < 0) {
-            throw new ValidationException("Participant count must not be negative");
-        }
+        validateParticipantCount(participantCount);
 
         booking.addFeedback(participantCount, feedbackComment);
         bookingRepository.save(booking);
@@ -141,11 +92,37 @@ public class BookingService implements
 
     @Override
     public void cancel(Long bookingId, Long userId) {
-
+        cancel(userId, bookingId, null);
     }
 
     @Override
     public void updateFeedback(Long bookingId, Integer participantCount, String comment, Long userId) {
+        addFeedback(userId, bookingId, participantCount, comment);
+    }
 
+    private User loadActiveUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        if (!user.isActive()) {
+            throw new ForbiddenException("User inactive");
+        }
+
+        return user;
+    }
+
+    private Booking loadBooking(Long bookingId) {
+        return bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new NotFoundException("Booking not found"));
+    }
+
+    private boolean isResponsibleUser(User user, Booking booking) {
+        return booking.getResponsibleUser().getId().equals(user.getId());
+    }
+
+    private void validateParticipantCount(Integer participantCount) {
+        if (participantCount != null && participantCount < 0) {
+            throw new ValidationException("Participant count must not be negative");
+        }
     }
 }

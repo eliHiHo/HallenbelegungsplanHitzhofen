@@ -21,6 +21,7 @@ public class BookingSeries {
     private User responsibleUser;
     private final Instant createdAt;
     private Instant updatedAt;
+    private String cancellationReason;
 
     public BookingSeries(
             Long id,
@@ -35,7 +36,8 @@ public class BookingSeries {
             Hall hall,
             User responsibleUser,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            String cancellationReason
     ) {
         this.id = id;
         this.title = Objects.requireNonNull(title);
@@ -50,6 +52,7 @@ public class BookingSeries {
         this.responsibleUser = Objects.requireNonNull(responsibleUser);
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
+        this.cancellationReason = cancellationReason;
     }
 
     public static BookingSeries createNew(
@@ -78,7 +81,8 @@ public class BookingSeries {
                 hall,
                 responsibleUser,
                 now,
-                now
+                now,
+                null
         );
     }
 
@@ -138,7 +142,8 @@ public class BookingSeries {
         return status == BookingSeriesStatus.CANCELLED;
     }
 
-    public void cancel() {
+    public void cancel(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
         this.status = BookingSeriesStatus.CANCELLED;
         this.updatedAt = Instant.now();
     }
