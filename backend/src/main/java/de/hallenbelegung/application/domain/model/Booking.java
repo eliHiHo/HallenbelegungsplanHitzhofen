@@ -193,4 +193,11 @@ public class Booking {
         this.cancellationReason = cancellationReason;
         this.updatedAt = Instant.now();
     }
+
+    public void addFeedback(Integer participantCount, String feedbackComment) {
+        this.participantCount = participantCount;
+        this.feedbackComment = feedbackComment;
+        this.conducted = true;
+        this.updatedAt = Instant.now();
+    }
 }

@@ -17,4 +17,6 @@ public interface BlockedTimeRepositoryPort {
     List<BlockedTime> findAllByTimeRange(LocalDateTime startTime, LocalDateTime endTime);
 
     void deleteById(Long blockedTimeId);
+
+    List<BlockedTime> findAll();
 }
