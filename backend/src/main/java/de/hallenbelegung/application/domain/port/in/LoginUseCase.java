@@ -1,4 +1,7 @@
 package de.hallenbelegung.application.domain.port.in;
-public interface LoginUseCase {
 
+import de.hallenbelegung.application.domain.view.AuthSessionView;
+
+public interface LoginUseCase {
+    AuthSessionView login(String email, String password);
 }

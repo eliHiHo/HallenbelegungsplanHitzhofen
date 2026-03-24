@@ -56,6 +56,7 @@ public class BookingService implements
                 .toList();
     }
 
+    @Override
     public void cancel(Long currentUserId, Long bookingId, String cancellationReason) {
         User user = loadActiveUser(currentUserId);
         Booking booking = loadBooking(bookingId);
@@ -70,8 +71,6 @@ public class BookingService implements
 
         booking.cancel(cancellationReason);
         bookingRepository.save(booking);
-
-        // später: NotificationPort
     }
 
     public void addFeedback(Long currentUserId,
@@ -93,11 +92,6 @@ public class BookingService implements
 
         booking.addFeedback(participantCount, feedbackComment);
         bookingRepository.save(booking);
-    }
-
-    @Override
-    public void cancel(Long bookingId, Long userId, String cancellationReason) {
-        cancel(userId, bookingId, cancellationReason);
     }
 
     @Override

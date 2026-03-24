@@ -17,4 +17,6 @@ public interface BookingSeriesRepositoryPort {
     List<BookingSeries> findActiveByHallIdAndDateRange(Long hallId, LocalDate startDate, LocalDate endDate);
 
     List<BookingSeries> findByResponsibleUserId(Long userId);
+
+    List<BookingSeries> findAll();
 }
