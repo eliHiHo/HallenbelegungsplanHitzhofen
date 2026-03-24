@@ -22,4 +22,6 @@ public interface NotificationPort {
     void notifyRequesterAboutBookingCancelledByAdmin(Booking booking, String cancellationReason);
 
     void notifyRequesterAboutBookingSeriesCancelledByAdmin(BookingSeries bookingSeries, String cancellationReason);
+
+    void notifyRequesterAboutBookingUpdated(Booking savedBooking);
 }

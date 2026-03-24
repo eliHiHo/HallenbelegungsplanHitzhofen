@@ -4,10 +4,7 @@ import de.hallenbelegung.application.domain.exception.ForbiddenException;
 import de.hallenbelegung.application.domain.exception.NotFoundException;
 import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.User;
-import de.hallenbelegung.application.domain.port.in.GetCurrentUserUseCase;
-import de.hallenbelegung.application.domain.port.in.LoginUseCase;
-import de.hallenbelegung.application.domain.port.in.LogoutUseCase;
-import de.hallenbelegung.application.domain.port.in.ResetPasswordUseCase;
+import de.hallenbelegung.application.domain.port.in.*;
 import de.hallenbelegung.application.domain.port.out.LoginRateLimitPort;
 import de.hallenbelegung.application.domain.port.out.PasswordHashingPort;
 import de.hallenbelegung.application.domain.port.out.PasswordResetMailPort;
@@ -29,7 +26,8 @@ public class AuthService implements
         LoginUseCase,
         LogoutUseCase,
         GetCurrentUserUseCase,
-        ResetPasswordUseCase {
+        ResetPasswordUseCase,
+        RequestPasswordResetUseCase {
 
     private static final Duration SESSION_TIMEOUT = Duration.ofMinutes(30);
     private static final Duration RESET_TOKEN_VALIDITY = Duration.ofHours(2);
