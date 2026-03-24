@@ -4,7 +4,6 @@ import de.hallenbelegung.application.domain.exception.ForbiddenException;
 import de.hallenbelegung.application.domain.exception.NotFoundException;
 import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.User;
-import de.hallenbelegung.application.domain.port.in.ForgotPasswordUseCase;
 import de.hallenbelegung.application.domain.port.in.GetCurrentUserUseCase;
 import de.hallenbelegung.application.domain.port.in.LoginUseCase;
 import de.hallenbelegung.application.domain.port.in.LogoutUseCase;
@@ -30,7 +29,6 @@ public class AuthService implements
         LoginUseCase,
         LogoutUseCase,
         GetCurrentUserUseCase,
-        ForgotPasswordUseCase,
         ResetPasswordUseCase {
 
     private static final Duration SESSION_TIMEOUT = Duration.ofMinutes(30);
