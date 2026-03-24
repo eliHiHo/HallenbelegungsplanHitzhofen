@@ -2,6 +2,7 @@ package de.hallenbelegung.application.domain.service;
 
 import de.hallenbelegung.application.domain.exception.ForbiddenException;
 import de.hallenbelegung.application.domain.exception.NotFoundException;
+import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.BlockedTime;
 import de.hallenbelegung.application.domain.model.Booking;
 import de.hallenbelegung.application.domain.model.BookingRequest;
@@ -229,7 +230,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
         );
 
         if (firstOccurrence == null) {
-            throw new IllegalStateException("Booking series request has no occurrence in requested calendar range");
+            throw new ValidationException("Booking series request has no occurrence in requested calendar range");
         }
 
         return new CalendarEntryView(

@@ -114,22 +114,25 @@ public class BlockedTimeService implements
                                           LocalDateTime start,
                                           LocalDateTime end) {
         if (requestedHall.isFullHall()) {
-            boolean bookingConflict = !bookingRepository.findByTimeRange(start, end).isEmpty();
+            boolean bookingConflict = bookingRepository.findByTimeRange(start, end)
+                    .stream()
+                    .anyMatch(existing -> !existing.isCancelled());
             if (bookingConflict) {
                 throw new BookingConflictException("Conflict with existing booking");
             }
             return;
         }
-        boolean sameHallConflict = !bookingRepository
+        boolean sameHallConflict = bookingRepository
                 .findByHallIdAndTimeRange(requestedHall.getId(), start, end)
-                .isEmpty();
+                .stream()
+                .anyMatch(existing -> !existing.isCancelled());
         if (sameHallConflict) {
             throw new BookingConflictException("Conflict with existing booking");
         }
         boolean fullHallConflict = bookingRepository
                 .findByTimeRange(start, end)
                 .stream()
-                .anyMatch(booking -> booking.getHall().isFullHall());
+                .anyMatch(booking -> !booking.isCancelled() && booking.getHall().isFullHall());
         if (fullHallConflict) {
             throw new BookingConflictException("Conflict with full hall booking");
         }
