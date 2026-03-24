@@ -11,15 +11,8 @@ import de.hallenbelegung.application.domain.model.BookingSeries;
 import de.hallenbelegung.application.domain.model.BookingSeriesRequest;
 import de.hallenbelegung.application.domain.model.Hall;
 import de.hallenbelegung.application.domain.model.User;
-import de.hallenbelegung.application.domain.port.in.ApproveBookingSeriesRequestUseCase;
-import de.hallenbelegung.application.domain.port.in.CreateBookingSeriesRequestUseCase;
-import de.hallenbelegung.application.domain.port.in.RejectBookingSeriesRequestUseCase;
-import de.hallenbelegung.application.domain.port.out.BlockedTimeRepositoryPort;
-import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
-import de.hallenbelegung.application.domain.port.out.BookingSeriesRepositoryPort;
-import de.hallenbelegung.application.domain.port.out.BookingSeriesRequestRepositoryPort;
-import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
-import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
+import de.hallenbelegung.application.domain.port.in.*;
+import de.hallenbelegung.application.domain.port.out.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
@@ -34,9 +27,11 @@ import java.util.List;
 @ApplicationScoped
 @Transactional
 public class BookingSeriesRequestService implements ApproveBookingSeriesRequestUseCase,
-    RejectBookingSeriesRequestUseCase,
-    CreateBookingSeriesRequestUseCase
-         {
+        RejectBookingSeriesRequestUseCase,
+        CreateBookingSeriesRequestUseCase,
+        GetBookingSeriesRequestUseCase,
+        GetBookingSeriesRequestsUseCase
+{
 
     private final BookingSeriesRequestRepositoryPort bookingSeriesRequestRepository;
     private final BookingSeriesRepositoryPort bookingSeriesRepository;
@@ -46,6 +41,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
     private final HallRepositoryPort hallRepository;
     private final HallenbelegungConfig config;
     private final Clock clock;
+    private final NotificationPort notificationPort;
 
     public BookingSeriesRequestService(
             BookingSeriesRequestRepositoryPort bookingSeriesRequestRepository,
@@ -55,7 +51,8 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
             UserRepositoryPort userRepository,
             HallRepositoryPort hallRepository,
             HallenbelegungConfig config,
-            Clock clock
+            Clock clock,
+            NotificationPort notificationPort
     ) {
         this.bookingSeriesRequestRepository = bookingSeriesRequestRepository;
         this.bookingSeriesRepository = bookingSeriesRepository;
@@ -65,6 +62,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         this.hallRepository = hallRepository;
         this.config = config;
         this.clock = clock;
+        this.notificationPort = notificationPort;
     }
 
     public Long create(Long userId,
@@ -113,8 +111,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
 
         BookingSeriesRequest saved = bookingSeriesRequestRepository.save(request);
 
-        // TODO: NotificationPort verwenden, um Admin über neue Serienanfrage zu informieren
-
+        notificationPort.notifyAdminsAboutNewBookingSeriesRequest(request);
         return saved.getId();
     }
 
@@ -188,7 +185,8 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         request.approve();
         bookingSeriesRequestRepository.save(request);
 
-        // TODO: NotificationPort verwenden, um Antragsteller über Genehmigung zu informieren
+        notificationPort.notifyRequesterAboutBookingSeriesRequestApproved(request, bookingSeries);
+
         // TODO: Optional Konflikttage für spätere Anzeige/Info separat protokollieren
     }
 
@@ -210,7 +208,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         request.reject(reason);
         bookingSeriesRequestRepository.save(request);
 
-        // TODO: NotificationPort verwenden, um Antragsteller über Ablehnung zu informieren
+        notificationPort.notifyRequesterAboutBookingSeriesRequestRejected(request, reason);
     }
 
     public List<BookingSeriesRequest> getOpenRequests(Long adminUserId) {

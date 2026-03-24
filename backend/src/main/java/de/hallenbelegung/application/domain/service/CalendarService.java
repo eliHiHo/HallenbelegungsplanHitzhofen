@@ -6,12 +6,14 @@ import de.hallenbelegung.application.domain.model.BlockedTime;
 import de.hallenbelegung.application.domain.model.Booking;
 import de.hallenbelegung.application.domain.model.BookingRequest;
 import de.hallenbelegung.application.domain.model.BookingRequestStatus;
+import de.hallenbelegung.application.domain.model.BookingSeriesRequest;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.GetCalendarDayUseCase;
 import de.hallenbelegung.application.domain.port.in.GetCalendarWeekUseCase;
 import de.hallenbelegung.application.domain.port.out.BlockedTimeRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingRequestRepositoryPort;
+import de.hallenbelegung.application.domain.port.out.BookingSeriesRequestRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import de.hallenbelegung.application.domain.view.CalendarDayView;
 import de.hallenbelegung.application.domain.view.CalendarEntryType;
@@ -30,6 +32,7 @@ import java.util.List;
 @Transactional
 public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUseCase {
 
+    private final BookingSeriesRequestRepositoryPort bookingSeriesRequestRepository;
     private final BookingRepositoryPort bookingRepository;
     private final BlockedTimeRepositoryPort blockedTimeRepository;
     private final BookingRequestRepositoryPort bookingRequestRepository;
@@ -39,12 +42,14 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
             BookingRepositoryPort bookingRepository,
             BlockedTimeRepositoryPort blockedTimeRepository,
             BookingRequestRepositoryPort bookingRequestRepository,
-            UserRepositoryPort userRepository
+            UserRepositoryPort userRepository,
+            BookingSeriesRequestRepositoryPort bookingSeriesRequestRepository
     ) {
         this.bookingRepository = bookingRepository;
         this.blockedTimeRepository = blockedTimeRepository;
         this.bookingRequestRepository = bookingRequestRepository;
         this.userRepository = userRepository;
+        this.bookingSeriesRequestRepository = bookingSeriesRequestRepository;
     }
 
     @Override
@@ -121,6 +126,16 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                     entries.add(mapBookingRequestToEntry(request, currentUser));
                 }
             }
+
+            List<BookingSeriesRequest> openSeriesRequests =
+                    bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.OPEN);
+
+            for (BookingSeriesRequest request : openSeriesRequests) {
+                if (canSeeBookingSeriesRequest(request, currentUser)
+                        && isSeriesRequestInRange(request, start, end)) {
+                    entries.add(mapBookingSeriesRequestToEntry(request, currentUser, start, end));
+                }
+            }
         }
 
         return entries.stream()
@@ -129,6 +144,14 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
     }
 
     private boolean canSeeBookingRequest(BookingRequest request, User currentUser) {
+        if (currentUser.isAdmin()) {
+            return true;
+        }
+
+        return request.getRequestingUser().getId().equals(currentUser.getId());
+    }
+
+    private boolean canSeeBookingSeriesRequest(BookingSeriesRequest request, User currentUser) {
         if (currentUser.isAdmin()) {
             return true;
         }
@@ -187,6 +210,39 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
         );
     }
 
+    private CalendarEntryView mapBookingSeriesRequestToEntry(
+            BookingSeriesRequest request,
+            User currentUser,
+            LocalDateTime rangeStart,
+            LocalDateTime rangeEnd
+    ) {
+        boolean ownEntry = currentUser != null
+                && request.getRequestingUser().getId().equals(currentUser.getId());
+
+        LocalDate firstOccurrence = findFirstOccurrenceInRange(
+                request,
+                rangeStart.toLocalDate(),
+                rangeEnd.minusDays(1).toLocalDate()
+        );
+
+        if (firstOccurrence == null) {
+            throw new IllegalStateException("Booking series request has no occurrence in requested calendar range");
+        }
+
+        return new CalendarEntryView(
+                request.getId(),
+                CalendarEntryType.BOOKING_SERIES_REQUEST,
+                request.getTitle(),
+                request.getDescription(),
+                firstOccurrence.atTime(request.getStartTime()),
+                firstOccurrence.atTime(request.getEndTime()),
+                request.getHall().getId(),
+                request.getHall().getName(),
+                request.getStatus().name(),
+                ownEntry
+        );
+    }
+
     private boolean isInRange(
             LocalDateTime entryStart,
             LocalDateTime entryEnd,
@@ -194,5 +250,60 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
             LocalDateTime rangeEnd
     ) {
         return entryStart.isBefore(rangeEnd) && entryEnd.isAfter(rangeStart);
+    }
+
+    private boolean isSeriesRequestInRange(
+            BookingSeriesRequest request,
+            LocalDateTime rangeStart,
+            LocalDateTime rangeEnd
+    ) {
+        LocalDate weekStartDate = rangeStart.toLocalDate();
+        LocalDate weekEndDate = rangeEnd.minusDays(1).toLocalDate();
+
+        LocalDate firstPossibleDate = weekStartDate.isAfter(request.getStartDate())
+                ? weekStartDate
+                : request.getStartDate();
+
+        LocalDate lastPossibleDate = weekEndDate.isBefore(request.getEndDate())
+                ? weekEndDate
+                : request.getEndDate();
+
+        if (firstPossibleDate.isAfter(lastPossibleDate)) {
+            return false;
+        }
+
+        for (LocalDate date = firstPossibleDate; !date.isAfter(lastPossibleDate); date = date.plusDays(1)) {
+            if (date.getDayOfWeek().equals(request.getWeekday())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private LocalDate findFirstOccurrenceInRange(
+            BookingSeriesRequest request,
+            LocalDate rangeStart,
+            LocalDate rangeEnd
+    ) {
+        LocalDate effectiveStart = rangeStart.isAfter(request.getStartDate())
+                ? rangeStart
+                : request.getStartDate();
+
+        LocalDate effectiveEnd = rangeEnd.isBefore(request.getEndDate())
+                ? rangeEnd
+                : request.getEndDate();
+
+        if (effectiveStart.isAfter(effectiveEnd)) {
+            return null;
+        }
+
+        for (LocalDate date = effectiveStart; !date.isAfter(effectiveEnd); date = date.plusDays(1)) {
+            if (date.getDayOfWeek().equals(request.getWeekday())) {
+                return date;
+            }
+        }
+
+        return null;
     }
 }

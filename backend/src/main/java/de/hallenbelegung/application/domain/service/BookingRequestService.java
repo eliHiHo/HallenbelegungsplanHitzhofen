@@ -17,6 +17,7 @@ import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
+import de.hallenbelegung.application.domain.port.out.NotificationPort;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -39,6 +40,7 @@ public class BookingRequestService implements
     private final HallRepositoryPort hallRepository;
     private final HallenbelegungConfig config;
     private final Clock clock;
+    private final NotificationPort notificationPort;
 
     public BookingRequestService(
             BookingRequestRepositoryPort bookingRequestRepository,
@@ -47,7 +49,8 @@ public class BookingRequestService implements
             UserRepositoryPort userRepository,
             HallRepositoryPort hallRepository,
             HallenbelegungConfig config,
-            Clock clock
+            Clock clock,
+            NotificationPort notificationPort
     ) {
         this.bookingRequestRepository = bookingRequestRepository;
         this.bookingRepository = bookingRepository;
@@ -56,6 +59,7 @@ public class BookingRequestService implements
         this.hallRepository = hallRepository;
         this.config = config;
         this.clock = clock;
+        this.notificationPort = notificationPort;
     }
 
     @Override
@@ -102,8 +106,7 @@ public class BookingRequestService implements
 
         BookingRequest saved = bookingRequestRepository.save(request);
 
-        // TODO: NotificationPort verwenden, um Admin über neue BookingRequest zu informieren
-
+        notificationPort.notifyAdminsAboutNewBookingRequest(request);
         return saved.getId();
     }
 
@@ -154,7 +157,7 @@ public class BookingRequestService implements
         request.approve();
         bookingRequestRepository.save(request);
 
-        // TODO: NotificationPort verwenden, um Antragsteller über Genehmigung zu informieren
+        notificationPort.notifyRequesterAboutBookingRequestApproved(request, booking);
     }
 
     public void reject(Long adminUserId, Long bookingRequestId, String reason) {
@@ -180,7 +183,7 @@ public class BookingRequestService implements
         request.reject(reason);
         bookingRequestRepository.save(request);
 
-        // TODO: NotificationPort verwenden, um Antragsteller über Ablehnung zu informieren
+        notificationPort.notifyRequesterAboutBookingRequestRejected(request, reason);
     }
 
     public List<BookingRequest> getOpenRequests(Long adminUserId) {

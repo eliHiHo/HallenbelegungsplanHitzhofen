@@ -9,7 +9,7 @@ import de.hallenbelegung.application.domain.port.in.GetCurrentUserUseCase;
 import de.hallenbelegung.application.domain.port.in.LoginUseCase;
 import de.hallenbelegung.application.domain.port.in.LogoutUseCase;
 import de.hallenbelegung.application.domain.port.in.ResetPasswordUseCase;
-import de.hallenbelegung.application.domain.port.out.MailPort;
+import de.hallenbelegung.application.domain.port.out.NotificationPort;
 import de.hallenbelegung.application.domain.port.out.PasswordHashingPort;
 import de.hallenbelegung.application.domain.port.out.PasswordResetPort;
 import de.hallenbelegung.application.domain.port.out.PasswordVerificationPort;
@@ -40,14 +40,14 @@ public class AuthService implements
     private final PasswordHashingPort passwordHashingPort;
     private final SessionPort sessionPort;
     private final PasswordResetPort passwordResetPort;
-    private final MailPort mailPort;
+    private final NotificationPort mailPort;
 
     public AuthService(UserRepositoryPort userRepository,
                        PasswordVerificationPort passwordVerificationPort,
                        PasswordHashingPort passwordHashingPort,
                        SessionPort sessionPort,
                        PasswordResetPort passwordResetPort,
-                       MailPort mailPort) {
+                       NotificationPort mailPort) {
         this.userRepository = userRepository;
         this.passwordVerificationPort = passwordVerificationPort;
         this.passwordHashingPort = passwordHashingPort;

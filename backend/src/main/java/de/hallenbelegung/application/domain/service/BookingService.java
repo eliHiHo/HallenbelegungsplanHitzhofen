@@ -10,6 +10,7 @@ import de.hallenbelegung.application.domain.port.in.GetBookingUseCase;
 import de.hallenbelegung.application.domain.port.in.GetUserBookingsUseCase;
 import de.hallenbelegung.application.domain.port.in.UpdateBookingFeedbackUseCase;
 import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
+import de.hallenbelegung.application.domain.port.out.NotificationPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -25,13 +26,16 @@ public class BookingService implements
         UpdateBookingFeedbackUseCase    {
 
 
+    private final NotificationPort notificationPort;
     private final BookingRepositoryPort bookingRepository;
     private final UserRepositoryPort userRepository;
 
     public BookingService(
             BookingRepositoryPort bookingRepository,
-            UserRepositoryPort userRepository
+            UserRepositoryPort userRepository,
+            NotificationPort notificationPort
     ) {
+        this.notificationPort = notificationPort;
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
     }
@@ -69,8 +73,17 @@ public class BookingService implements
             throw new ForbiddenException("User not allowed to cancel this booking");
         }
 
+        boolean cancelledByAdmin = user.isAdmin();
+
         booking.cancel(cancellationReason);
         bookingRepository.save(booking);
+
+        if (cancelledByAdmin) {
+            notificationPort.notifyRequesterAboutBookingCancelledByAdmin(
+                    booking,
+                    cancellationReason
+            );
+        }
     }
 
     public void addFeedback(Long currentUserId,
