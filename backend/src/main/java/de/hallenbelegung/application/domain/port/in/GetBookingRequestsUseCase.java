@@ -6,5 +6,6 @@ import java.util.List;
 
 public interface GetBookingRequestsUseCase {
     List<BookingRequest> getOpenRequests(Long adminUserId);
+    List<BookingRequest> getAllRequests(Long adminUserId);
     List<BookingRequest> getRequestsByUser(Long userId);
 }

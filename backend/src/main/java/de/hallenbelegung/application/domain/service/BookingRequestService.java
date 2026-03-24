@@ -205,6 +205,25 @@ public class BookingRequestService implements
                 .toList();
     }
 
+    public List<BookingRequest> getAllRequests(Long adminUserId) {
+
+        User admin = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new NotFoundException("Admin user not found"));
+
+        if (!admin.isAdmin()) {
+            throw new ForbiddenException("User not allowed to view all booking requests");
+        }
+
+        if (!admin.isActive()) {
+            throw new ForbiddenException("Admin user inactive");
+        }
+
+        return bookingRequestRepository.findAll()
+                .stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .toList();
+    }
+
     public List<BookingRequest> getRequestsByUser(Long userId) {
 
         User user = userRepository.findById(userId)

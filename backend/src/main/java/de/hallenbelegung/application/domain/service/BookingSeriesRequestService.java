@@ -1,10 +1,8 @@
 package de.hallenbelegung.application.domain.service;
 
-import de.hallenbelegung.application.domain.exception.BookingConflictException;
 import de.hallenbelegung.application.domain.exception.ForbiddenException;
 import de.hallenbelegung.application.domain.exception.NotFoundException;
 import de.hallenbelegung.application.domain.exception.ValidationException;
-import de.hallenbelegung.application.domain.model.BlockedTime;
 import de.hallenbelegung.application.domain.model.Booking;
 import de.hallenbelegung.application.domain.model.BookingRequestStatus;
 import de.hallenbelegung.application.domain.model.BookingSeries;
@@ -13,7 +11,6 @@ import de.hallenbelegung.application.domain.model.Hall;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.*;
 import de.hallenbelegung.application.domain.port.out.*;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
 import java.time.Clock;
@@ -31,8 +28,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         RejectBookingSeriesRequestUseCase,
         CreateBookingSeriesRequestUseCase,
         GetBookingSeriesRequestUseCase,
-        GetBookingSeriesRequestsUseCase
-{
+        GetBookingSeriesRequestsUseCase {
 
     private final BookingSeriesRequestRepositoryPort bookingSeriesRequestRepository;
     private final BookingSeriesRepositoryPort bookingSeriesRepository;
@@ -226,6 +222,21 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
                 .toList();
     }
 
+    public List<BookingSeriesRequest> getAllRequests(Long adminUserId) {
+
+        User admin = loadActiveUser(adminUserId);
+
+        if (!admin.isAdmin()) {
+            throw new ForbiddenException("User not allowed to view all booking series requests");
+        }
+
+        return bookingSeriesRequestRepository.findAll()
+                .stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .toList();
+    }
+
+
     public List<BookingSeriesRequest> getRequestsByUser(Long userId) {
 
         User user = loadActiveUser(userId);
@@ -396,12 +407,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
                                       LocalTime requestedEnd) {
 
         if (requestedHall.isFullHall()) {
-            return bookingSeriesRepository.findByHallId(requestedHall.getId())
-                    .stream()
-                    .filter(series -> !series.isCancelled())
-                    .anyMatch(series -> seriesOverlapsOnDate(series, date, requestedStart, requestedEnd))
-                    || bookingSeriesRepository.findActiveByHallIdAndDateRange(requestedHall.getId(), date, date)
-                    .stream()
+            return findPotentialConflictingSeriesForFullHall(date).stream()
                     .filter(series -> !series.isCancelled())
                     .anyMatch(series -> seriesOverlapsOnDate(series, date, requestedStart, requestedEnd));
         }
@@ -419,17 +425,16 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
                 .filter(series -> !series.isCancelled())
                 .anyMatch(series -> seriesOverlapsOnDate(series, date, requestedStart, requestedEnd));
     }
-
-    private List<BookingSeries> findPotentialFullHallSeries(LocalDate date) {
-        List<BookingSeries> fullHallSeries = new ArrayList<>();
+    private List<BookingSeries> findPotentialConflictingSeriesForFullHall(LocalDate date) {
+        List<BookingSeries> conflictingSeries = new ArrayList<>();
 
         for (Hall hall : hallRepository.findAllActive()) {
-            if (hall.isFullHall()) {
-                fullHallSeries.addAll(bookingSeriesRepository.findActiveByHallIdAndDateRange(hall.getId(), date, date));
-            }
+            conflictingSeries.addAll(
+                    bookingSeriesRepository.findActiveByHallIdAndDateRange(hall.getId(), date, date)
+            );
         }
 
-        return fullHallSeries;
+        return conflictingSeries;
     }
 
     private boolean seriesOverlapsOnDate(BookingSeries series,
@@ -437,30 +442,29 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
                                          LocalTime requestedStart,
                                          LocalTime requestedEnd) {
 
+        // Serie gilt nur, wenn Datum im Bereich liegt
         if (date.isBefore(series.getStartDate()) || date.isAfter(series.getEndDate())) {
             return false;
         }
 
-        if (date.getDayOfWeek() != series.getWeekday()) {
+        // Serie gilt nur am richtigen Wochentag
+        if (!date.getDayOfWeek().equals(series.getWeekday())) {
             return false;
         }
 
-        return requestedStart.isBefore(series.getEndTime()) && requestedEnd.isAfter(series.getStartTime());
+        // Zeitüberlappung prüfen
+        return requestedStart.isBefore(series.getEndTime())
+                && requestedEnd.isAfter(series.getStartTime());
     }
 
-    private void checkForConflictsOrThrow(Hall requestedHall, LocalDateTime start, LocalDateTime end) {
-        if (hasConflict(requestedHall, start, end)) {
-            throw new BookingConflictException("Conflict detected");
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private void checkApprovalConflicts(List<LocalDate> occurrences,
-                                        Hall hall,
-                                        LocalTime startTime,
-                                        LocalTime endTime) {
-        for (LocalDate date : occurrences) {
-            checkForConflictsOrThrow(hall, date.atTime(startTime), date.atTime(endTime));
-        }
+    private List<BookingSeries> findPotentialFullHallSeries(LocalDate date) {
+        return hallRepository.findAllActive().stream()
+                .filter(Hall::isFullHall)
+                .flatMap(hall ->
+                        bookingSeriesRepository
+                                .findActiveByHallIdAndDateRange(hall.getId(), date, date)
+                                .stream()
+                )
+                .toList();
     }
 }
