@@ -62,6 +62,7 @@ public class BookingRequestService implements
     public Long create(Long userId,
                        Long hallId,
                        String title,
+                       String description,
                        LocalDateTime startTime,
                        LocalDateTime endTime) {
 
@@ -91,7 +92,7 @@ public class BookingRequestService implements
 
         BookingRequest request = BookingRequest.createNew(
                 title,
-                null,
+                description,
                 startTime.toLocalDate(),
                 startTime,
                 endTime,

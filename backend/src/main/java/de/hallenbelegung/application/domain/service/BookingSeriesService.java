@@ -9,6 +9,7 @@ import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.CancelBookingSeriesOccurrenceUseCase;
 import de.hallenbelegung.application.domain.port.in.CancelBookingSeriesUseCase;
 import de.hallenbelegung.application.domain.port.in.GetBookingSeriesUseCase;
+import de.hallenbelegung.application.domain.port.in.GetUserBookingSeriesUseCase;
 import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingSeriesRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
@@ -22,7 +23,8 @@ import java.util.List;
 public class BookingSeriesService implements
         GetBookingSeriesUseCase,
         CancelBookingSeriesOccurrenceUseCase,
-        CancelBookingSeriesUseCase
+        CancelBookingSeriesUseCase,
+        GetUserBookingSeriesUseCase
 {
 
     private final BookingSeriesRepositoryPort bookingSeriesRepository;
