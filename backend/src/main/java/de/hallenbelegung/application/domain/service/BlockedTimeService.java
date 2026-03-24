@@ -8,6 +8,8 @@ import de.hallenbelegung.application.domain.model.BlockedTime;
 import de.hallenbelegung.application.domain.model.Hall;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.CreateBlockedTimeUseCase;
+import de.hallenbelegung.application.domain.port.in.DeleteBlockedTimeUseCase;
+import de.hallenbelegung.application.domain.port.in.GetBlockedTimeUseCase;
 import de.hallenbelegung.application.domain.port.out.BlockedTimeRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
@@ -22,7 +24,10 @@ import java.util.List;
 
 @ApplicationScoped
 @Transactional
-public class BlockedTimeService implements CreateBlockedTimeUseCase {
+public class BlockedTimeService implements
+        CreateBlockedTimeUseCase,
+        GetBlockedTimeUseCase,
+        DeleteBlockedTimeUseCase {
 
     private final BlockedTimeRepositoryPort blockedTimeRepository;
     private final BookingRepositoryPort bookingRepository;

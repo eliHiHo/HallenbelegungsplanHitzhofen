@@ -6,6 +6,9 @@ import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.Booking;
 import de.hallenbelegung.application.domain.model.BookingSeries;
 import de.hallenbelegung.application.domain.model.User;
+import de.hallenbelegung.application.domain.port.in.CancelBookingSeriesOccurrenceUseCase;
+import de.hallenbelegung.application.domain.port.in.CancelBookingSeriesUseCase;
+import de.hallenbelegung.application.domain.port.in.GetBookingSeriesUseCase;
 import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingSeriesRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
@@ -16,7 +19,11 @@ import java.util.List;
 
 @ApplicationScoped
 @Transactional
-public class BookingSeriesService {
+public class BookingSeriesService implements
+        GetBookingSeriesUseCase,
+        CancelBookingSeriesOccurrenceUseCase,
+        CancelBookingSeriesUseCase
+{
 
     private final BookingSeriesRepositoryPort bookingSeriesRepository;
     private final BookingRepositoryPort bookingRepository;

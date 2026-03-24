@@ -11,6 +11,9 @@ import de.hallenbelegung.application.domain.model.BookingSeries;
 import de.hallenbelegung.application.domain.model.BookingSeriesRequest;
 import de.hallenbelegung.application.domain.model.Hall;
 import de.hallenbelegung.application.domain.model.User;
+import de.hallenbelegung.application.domain.port.in.ApproveBookingSeriesRequestUseCase;
+import de.hallenbelegung.application.domain.port.in.CreateBookingSeriesRequestUseCase;
+import de.hallenbelegung.application.domain.port.in.RejectBookingSeriesRequestUseCase;
 import de.hallenbelegung.application.domain.port.out.BlockedTimeRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.BookingSeriesRepositoryPort;
@@ -30,7 +33,10 @@ import java.util.List;
 
 @ApplicationScoped
 @Transactional
-public class BookingSeriesRequestService {
+public class BookingSeriesRequestService implements ApproveBookingSeriesRequestUseCase,
+    RejectBookingSeriesRequestUseCase,
+    CreateBookingSeriesRequestUseCase
+         {
 
     private final BookingSeriesRequestRepositoryPort bookingSeriesRequestRepository;
     private final BookingSeriesRepositoryPort bookingSeriesRepository;

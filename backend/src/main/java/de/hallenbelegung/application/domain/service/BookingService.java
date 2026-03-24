@@ -6,6 +6,8 @@ import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.Booking;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.CancelBookingUseCase;
+import de.hallenbelegung.application.domain.port.in.GetBookingUseCase;
+import de.hallenbelegung.application.domain.port.in.GetUserBookingsUseCase;
 import de.hallenbelegung.application.domain.port.in.UpdateBookingFeedbackUseCase;
 import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
@@ -17,8 +19,11 @@ import java.util.List;
 @ApplicationScoped
 @Transactional
 public class BookingService implements
+        GetBookingUseCase,
+        GetUserBookingsUseCase,
         CancelBookingUseCase,
-        UpdateBookingFeedbackUseCase {
+        UpdateBookingFeedbackUseCase    {
+
 
     private final BookingRepositoryPort bookingRepository;
     private final UserRepositoryPort userRepository;
