@@ -256,8 +256,14 @@ public class BookingRequestService implements
             throw new ValidationException("Start must be before end");
         }
 
-        if (startTime.isBefore(LocalDateTime.now(clock))) {
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        if (startTime.isBefore(now)) {
             throw new ValidationException("Cannot book in the past");
+        }
+
+        if (startTime.isAfter(now.plusYears(1))) {
+            throw new ValidationException("Booking request must not be more than one year in advance");
         }
     }
 
