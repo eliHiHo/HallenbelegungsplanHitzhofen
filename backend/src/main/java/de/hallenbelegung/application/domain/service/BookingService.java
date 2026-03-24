@@ -96,8 +96,8 @@ public class BookingService implements
     }
 
     @Override
-    public void cancel(Long bookingId, Long userId) {
-        cancel(userId, bookingId, null);
+    public void cancel(Long bookingId, Long userId, String cancellationReason) {
+        cancel(userId, bookingId, cancellationReason);
     }
 
     @Override
