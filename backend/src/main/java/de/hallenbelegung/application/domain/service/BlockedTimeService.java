@@ -15,12 +15,17 @@ import de.hallenbelegung.application.domain.port.out.BookingRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.HallConfigPort;
+import de.hallenbelegung.application.domain.port.out.PublicHolidayPort;
+import io.quarkus.scheduler.Scheduled;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -35,13 +40,15 @@ public class BlockedTimeService implements
     private final HallRepositoryPort hallRepository;
     private final HallConfigPort config;
     private final Clock clock;
+    private final PublicHolidayPort publicHolidayPort;
     public BlockedTimeService(
             BlockedTimeRepositoryPort blockedTimeRepository,
             BookingRepositoryPort bookingRepository,
             UserRepositoryPort userRepository,
             HallRepositoryPort hallRepository,
             HallConfigPort config,
-            Clock clock
+            Clock clock,
+            PublicHolidayPort publicHolidayPort
     ) {
         this.blockedTimeRepository = blockedTimeRepository;
         this.bookingRepository = bookingRepository;
@@ -49,7 +56,59 @@ public class BlockedTimeService implements
         this.hallRepository = hallRepository;
         this.config = config;
         this.clock = clock;
+        this.publicHolidayPort = publicHolidayPort;
     }
+
+    @PostConstruct
+    void init() {
+        // Sync current and next year on startup
+        LocalDate today = LocalDate.now(clock);
+        syncPublicHolidaysForYear(today.getYear());
+        syncPublicHolidaysForYear(today.getYear() + 1);
+    }
+
+    // Run once yearly on Jan 1st at 00:00 to refresh public holidays
+    @Scheduled(cron = "0 0 0 1 1 ?")
+    public void scheduledAnnualSync() {
+        int year = LocalDate.now(clock).getYear();
+        syncPublicHolidaysForYear(year);
+    }
+
+    public void syncPublicHolidaysForYear(int year) {
+        // find a full hall
+        Optional<Hall> fullHall = hallRepository.findAllActive().stream().filter(Hall::isFullHall).findFirst();
+        if (fullHall.isEmpty()) return; // nothing to block
+
+        // find an admin user to attribute the blocked times
+        Optional<User> adminUser = userRepository.findAllActive().stream().filter(User::isAdmin).findFirst();
+        if (adminUser.isEmpty()) return; // cannot create without a user
+
+        List<LocalDate> holidays = publicHolidayPort.findHolidays(LocalDate.of(year,1,1), LocalDate.of(year,12,31));
+        for (LocalDate d : holidays) {
+            LocalDateTime startAt = d.atStartOfDay();
+            LocalDateTime endAt = d.plusDays(1).atStartOfDay();
+
+            // Avoid duplicates: check overlap for FULL hall
+            boolean exists = !blockedTimeRepository.findByHallIdAndTimeRange(fullHall.get().getId(), startAt, endAt)
+                    .stream()
+                    .filter(bt -> bt.getType() == BlockedTimeType.PUBLIC_HOLIDAY)
+                    .toList()
+                    .isEmpty();
+
+            if (exists) continue;
+
+            BlockedTime blockedTime = BlockedTime.createNew(
+                    "Öffentlicher Feiertag",
+                    startAt,
+                    endAt,
+                    BlockedTimeType.PUBLIC_HOLIDAY,
+                    fullHall.get(),
+                    adminUser.get()
+            );
+            blockedTimeRepository.save(blockedTime);
+        }
+    }
+
     public void create(UUID hallId,
                        String reason,
                        LocalDateTime startTime,

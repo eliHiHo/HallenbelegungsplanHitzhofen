@@ -1,7 +1,6 @@
 package de.hallenbelegung.application.domain.model;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
@@ -17,7 +16,6 @@ public class Booking {
     private Integer participantCount;
     private boolean conducted;
     private String feedbackComment;
-    private String cancellationReason;
     private Hall hall;
     private User responsibleUser;
     private BookingSeries bookingSeries;
@@ -39,7 +37,6 @@ public class Booking {
             Integer participantCount,
             boolean conducted,
             String feedbackComment,
-            String cancellationReason,
             Hall hall,
             User responsibleUser,
             BookingSeries bookingSeries,
@@ -60,7 +57,6 @@ public class Booking {
         this.participantCount = participantCount;
         this.conducted = conducted;
         this.feedbackComment = feedbackComment;
-        this.cancellationReason = cancellationReason;
         this.hall = Objects.requireNonNull(hall);
         this.responsibleUser = Objects.requireNonNull(responsibleUser);
         this.bookingSeries = bookingSeries;
@@ -98,7 +94,6 @@ public class Booking {
                 BookingStatus.APPROVED,
                 null,
                 false,
-                null,
                 null,
                 hall,
                 responsibleUser,
@@ -171,10 +166,6 @@ public class Booking {
         return feedbackComment;
     }
 
-    public String getCancellationReason() {
-        return cancellationReason;
-    }
-
     public Hall getHall() {
         return hall;
     }
@@ -222,7 +213,6 @@ public class Booking {
     public void updateDetails(
             String title,
             String description,
-            LocalDate date,
             LocalDateTime startAt,
             LocalDateTime endAt,
             Hall hall
@@ -235,13 +225,14 @@ public class Booking {
         this.updatedAt = Instant.now();
     }
 
-    public void cancel(String cancellationReason) {
+    public void cancel(User cancelledBy, String cancellationReason) {
         this.status = BookingStatus.CANCELLED;
-        this.cancellationReason = cancellationReason;
-        this.updatedAt = Instant.now();
-        this.cancelledAt = Instant.now();
         this.cancelReason = cancellationReason;
-        this.cancelledBy = this.updatedBy; // assuming the user performing the update is the one cancelling
+        Instant now = Instant.now();
+        this.updatedAt = now;
+        this.cancelledAt = now;
+        this.cancelledBy = Objects.requireNonNull(cancelledBy);
+        this.updatedBy = cancelledBy;
     }
 
     public void addFeedback(Integer participantCount, String feedbackComment) {

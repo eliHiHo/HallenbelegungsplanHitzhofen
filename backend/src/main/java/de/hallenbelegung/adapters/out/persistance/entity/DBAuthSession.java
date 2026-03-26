@@ -50,7 +50,7 @@ public class DBAuthSession {
     @Column(name = "user_agent", length = 512)
     private String userAgent;
 
-    protected DBAuthSession() {
+    public DBAuthSession() {
     }
 
     public UUID getId() {

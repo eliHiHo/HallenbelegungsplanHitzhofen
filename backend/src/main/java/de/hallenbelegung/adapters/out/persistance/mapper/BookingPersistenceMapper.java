@@ -32,7 +32,6 @@ public class BookingPersistenceMapper {
                 entity.getParticipantCount(),
                 Boolean.TRUE.equals(entity.getConducted()),
                 entity.getFeedbackComment(),
-                entity.getCancelReason(),
                 hallMapper.toDomain(entity.getHall()),
                 userMapper.toDomain(entity.getResponsibleUser()),
                 seriesMapper.toDomain(entity.getBookingSeries()),

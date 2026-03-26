@@ -93,6 +93,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Scheduler -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-scheduler</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

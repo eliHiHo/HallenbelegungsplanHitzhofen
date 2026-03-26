@@ -84,7 +84,7 @@ public class BookingSeriesService implements
 
         for (Booking booking : bookings) {
             if (!booking.isCancelled()) {
-                booking.cancel(cancellationReason);
+                booking.cancel(user, cancellationReason);
                 bookingRepository.save(booking);
             }
         }
@@ -126,7 +126,7 @@ public class BookingSeriesService implements
             throw new ValidationException("Booking occurrence is already cancelled");
         }
 
-        booking.cancel(cancellationReason);
+        booking.cancel(user, cancellationReason);
         bookingRepository.save(booking);
     }
 

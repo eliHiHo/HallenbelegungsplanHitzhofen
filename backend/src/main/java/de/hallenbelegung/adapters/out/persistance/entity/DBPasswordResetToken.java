@@ -40,7 +40,7 @@ public class DBPasswordResetToken {
     @Column(name = "used_at")
     private Instant usedAt;
 
-    protected DBPasswordResetToken() {
+    public DBPasswordResetToken() {
     }
 
     public UUID getId() {

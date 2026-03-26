@@ -108,7 +108,7 @@ public class BookingService implements
 
         boolean cancelledByAdmin = user.isAdmin();
 
-        booking.cancel(cancellationReason);
+        booking.cancel(user, cancellationReason);
         bookingRepository.save(booking);
 
         if (cancelledByAdmin) {
@@ -181,7 +181,6 @@ public class BookingService implements
         booking.updateDetails(
                 title,
                 description,
-                startTime.toLocalDate(),
                 startTime,
                 endTime,
                 hall
