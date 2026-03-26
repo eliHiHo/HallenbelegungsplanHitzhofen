@@ -2,21 +2,22 @@ package de.hallenbelegung.adapters.in.api.mapper;
 
 import de.hallenbelegung.adapters.in.api.dto.LoginResponseDTO;
 import de.hallenbelegung.application.domain.model.User;
+import de.hallenbelegung.application.domain.view.AuthSessionView;
 
 public class AuthApiMapper {
 
-    public static LoginResponseDTO toLoginResponse(String token, User user) {
-        if (user == null) {
-            return new LoginResponseDTO(token, null, null, null, null, null);
+    public static LoginResponseDTO toLoginResponse(AuthSessionView view) {
+        if (view == null) {
+            return null;
         }
 
         return new LoginResponseDTO(
-                token,
-                user.getId(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getRole() != null ? user.getRole().name() : null
+                view.getSessionId(),
+                view.getUserId(),
+                view.getEmail(),
+                view.getFirstName(),
+                view.getLastName(),
+                view.getRole().name()
         );
     }
 }
