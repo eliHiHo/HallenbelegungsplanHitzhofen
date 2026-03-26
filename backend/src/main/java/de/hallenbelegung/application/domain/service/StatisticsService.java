@@ -127,11 +127,11 @@ public class StatisticsService implements
                 : (double) totalParticipants / participantRelevantBookings.size();
 
         List<SeriesOccurrenceStatisticsView> occurrences = bookings.stream()
-                .sorted(Comparator.comparing(Booking::getstartAt))
+                .sorted(Comparator.comparing(Booking::getStartAt))
                 .map(booking -> new SeriesOccurrenceStatisticsView(
                         booking.getId(),
-                        booking.getstartAt(),
-                        booking.getendAt(),
+                        booking.getStartAt(),
+                        booking.getEndAt(),
                         booking.isCancelled(),
                         booking.isConducted(),
                         booking.getParticipantCount(),
@@ -176,8 +176,8 @@ public class StatisticsService implements
         long bookedMinutes = bookings.stream()
                 .filter(booking -> !booking.isCancelled())
                 .mapToLong(booking -> ChronoUnit.MINUTES.between(
-                        booking.getstartAt(),
-                        booking.getendAt()
+                        booking.getStartAt(),
+                        booking.getEndAt()
                 ))
                 .sum();
 
@@ -267,7 +267,7 @@ public class StatisticsService implements
     }
 
     private boolean isWithinInclusiveDateRange(Booking booking, LocalDate from, LocalDate to) {
-        return !booking.getstartAt().toLocalDate().isBefore(from) && !booking.getstartAt().toLocalDate().isAfter(to);
+        return !booking.getStartAt().toLocalDate().isBefore(from) && !booking.getStartAt().toLocalDate().isAfter(to);
     }
 
     private boolean overlaps(BookingSeries series, LocalDate from, LocalDate to) {

@@ -52,7 +52,7 @@ public class JpaBookingRequestRepository implements BookingRequestRepositoryPort
     }
 
     @Override
-    public List<BookingRequest> findByRequestingUserId(UUID userId) {
+    public List<BookingRequest> findByRequestedByUserId(UUID userId) {
         List<DBBookingRequest> list = em.createQuery("SELECT r FROM DBBookingRequest r WHERE r.requestedBy.id = :userId", DBBookingRequest.class)
                 .setParameter("userId", userId)
                 .getResultList();

@@ -89,7 +89,7 @@ public class BookingService implements
 
         return bookingRepository.findByResponsibleUserId(user.getId())
                 .stream()
-                .sorted((a, b) -> b.getstartAt().compareTo(a.getstartAt()))
+                .sorted((a, b) -> b.getStartAt().compareTo(a.getStartAt()))
                 .toList();
     }
 
@@ -332,8 +332,8 @@ public class BookingService implements
                 booking.getId(),
                 booking.getTitle(),
                 booking.getDescription(),
-                booking.getstartAt(),
-                booking.getendAt(),
+                booking.getStartAt(),
+                booking.getEndAt(),
                 booking.getHall().getId(),
                 booking.getHall().getName(),
                 booking.getStatus().name(),

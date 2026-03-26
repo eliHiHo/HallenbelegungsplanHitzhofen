@@ -54,7 +54,7 @@ public class JpaBookingSeriesRequestRepository implements BookingSeriesRequestRe
     }
 
     @Override
-    public List<BookingSeriesRequest> findByRequestingUserId(UUID userId) {
+    public List<BookingSeriesRequest> findByRequestedByUserId(UUID userId) {
         List<DBBookingSeriesRequest> list = em.createQuery("SELECT r FROM DBBookingSeriesRequest r WHERE r.requestedBy.id = :userId", DBBookingSeriesRequest.class)
                 .setParameter("userId", userId)
                 .getResultList();

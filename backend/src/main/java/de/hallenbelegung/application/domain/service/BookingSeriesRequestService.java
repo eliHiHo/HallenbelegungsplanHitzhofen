@@ -242,7 +242,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
 
         User user = loadActiveUser(userId);
 
-        return bookingSeriesRequestRepository.findByRequestingUserId(user.getId())
+        return bookingSeriesRequestRepository.findByRequestedByUserId(user.getId())
                 .stream()
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .toList();
@@ -469,3 +469,4 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
                 .toList();
     }
 }
+

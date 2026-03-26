@@ -133,21 +133,12 @@ public class Booking {
         return description;
     }
 
-
     public LocalDateTime getStartAt() {
         return startAt;
     }
 
     public LocalDateTime getEndAt() {
         return endAt;
-    }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                // compatibility aliases (some code expects lowercase-named getters)
-    public LocalDateTime getstartAt() {
-        return getStartAt();
-    }
-
-    public LocalDateTime getendAt() {
-        return getEndAt();
     }
 
     public BookingStatus getStatus() {

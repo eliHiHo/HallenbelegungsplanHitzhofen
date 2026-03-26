@@ -107,7 +107,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
 
         List<Booking> bookings = bookingRepository.findByTimeRange(start, end);
         for (Booking booking : bookings) {
-            if (isInRange(booking.getstartAt(), booking.getendAt(), start, end)) {
+            if (isInRange(booking.getStartAt(), booking.getEndAt(), start, end)) {
                 entries.add(mapBookingToEntry(booking, currentUser));
             }
         }
@@ -124,7 +124,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
 
             for (BookingRequest request : openRequests) {
                 if (canSeeBookingRequest(request, currentUser)
-                        && isInRange(request.getstartAt(), request.getendAt(), start, end)) {
+                        && isInRange(request.getStartAt(), request.getEndAt(), start, end)) {
                     entries.add(mapBookingRequestToEntry(request, currentUser));
                 }
             }
@@ -150,7 +150,7 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
             return true;
         }
 
-        return request.getRequestingUser().getId().equals(currentUser.getId());
+        return request.getRequestedBy().getId().equals(currentUser.getId());
     }
 
     private boolean canSeeBookingSeriesRequest(BookingSeriesRequest request, User currentUser) {
@@ -170,8 +170,8 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 CalendarEntryType.BOOKING,
                 booking.getTitle(),
                 booking.getDescription(),
-                booking.getstartAt(),
-                booking.getendAt(),
+                booking.getStartAt(),
+                booking.getEndAt(),
                 booking.getHall().getId(),
                 booking.getHall().getName(),
                 booking.getResponsibleUser().getFullName(),
@@ -198,18 +198,18 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
 
     private CalendarEntryView mapBookingRequestToEntry(BookingRequest request, User currentUser) {
         boolean ownEntry = currentUser != null
-                && request.getRequestingUser().getId().equals(currentUser.getId());
+                && request.getRequestedBy().getId().equals(currentUser.getId());
 
         return new CalendarEntryView(
                 request.getId(),
                 CalendarEntryType.BOOKING_REQUEST,
                 request.getTitle(),
                 request.getDescription(),
-                request.getstartAt(),
-                request.getendAt(),
+                request.getStartAt(),
+                request.getEndAt(),
                 request.getHall().getId(),
                 request.getHall().getName(),
-                request.getRequestingUser().getFullName(),
+                request.getRequestedBy().getFullName(),
                 request.getStatus().name(),
                 ownEntry
         );

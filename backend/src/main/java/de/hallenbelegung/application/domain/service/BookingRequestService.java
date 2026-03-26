@@ -232,7 +232,7 @@ public class BookingRequestService implements
             throw new ForbiddenException("User inactive");
         }
 
-        return bookingRequestRepository.findByRequestingUserId(userId)
+        return bookingRequestRepository.findByRequestedByUserId(userId)
                 .stream()
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .toList();

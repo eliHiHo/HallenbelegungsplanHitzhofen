@@ -17,5 +17,5 @@ public interface BookingSeriesRequestRepositoryPort {
 
     List<BookingSeriesRequest> findByStatus(BookingRequestStatus status);
 
-    List<BookingSeriesRequest> findByRequestingUserId(UUID userId);
+    List<BookingSeriesRequest> findByRequestedByUserId(UUID userId);
 }
