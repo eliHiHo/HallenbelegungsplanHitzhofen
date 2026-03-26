@@ -11,7 +11,6 @@ public class BookingRequest {
     private final UUID id;
     private String title;
     private String description;
-    private LocalDate date;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     private BookingRequestStatus status;
@@ -25,7 +24,6 @@ public class BookingRequest {
             UUID id,
             String title,
             String description,
-            LocalDate date,
             LocalDateTime startAt,
             LocalDateTime endAt,
             BookingRequestStatus status,
@@ -38,7 +36,6 @@ public class BookingRequest {
         this.id = id;
         this.title = Objects.requireNonNull(title);
         this.description = description;
-        this.date = Objects.requireNonNull(date);
         this.startAt = Objects.requireNonNull(startAt);
         this.endAt = Objects.requireNonNull(endAt);
         this.status = Objects.requireNonNull(status);
@@ -64,7 +61,6 @@ public class BookingRequest {
                 null,
                 title,
                 description,
-                date,
                 startAt,
                 endAt,
                 BookingRequestStatus.PENDING,
@@ -88,10 +84,6 @@ public class BookingRequest {
         return description;
     }
 
-    public LocalDate getDate() {
-        return date;
-    }
-
     public LocalDateTime getstartAt() {
         return startAt;
     }
@@ -112,6 +104,11 @@ public class BookingRequest {
         return hall;
     }
 
+    public User requestedBy() {
+        return requestingUser;
+    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        // compatibility getter used in some services
     public User getRequestingUser() {
         return requestingUser;
     }

@@ -9,6 +9,7 @@ import de.hallenbelegung.application.domain.port.in.ManageHallUseCase;
 import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
 import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import jakarta.transaction.Transactional;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.Comparator;
 import java.util.List;

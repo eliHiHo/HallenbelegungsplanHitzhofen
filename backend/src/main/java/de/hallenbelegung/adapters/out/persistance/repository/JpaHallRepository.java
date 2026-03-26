@@ -1,4 +1,48 @@
 package de.hallenbelegung.adapters.out.persistance.repository;
 
-public class JpaHallRepository {
+import de.hallenbelegung.adapters.out.persistance.entity.DBHall;
+import de.hallenbelegung.adapters.out.persistance.mapper.HallPersistenceMapper;
+import de.hallenbelegung.application.domain.model.Hall;
+import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@ApplicationScoped
+public class JpaHallRepository implements HallRepositoryPort {
+
+    @Inject
+    EntityManager em;
+
+    private final HallPersistenceMapper mapper = new HallPersistenceMapper();
+
+    @Override
+    public Hall save(Hall hall) {
+        DBHall entity = mapper.toEntity(hall);
+        DBHall merged = em.merge(entity);
+        return mapper.toDomain(merged);
+    }
+
+    @Override
+    public Optional<Hall> findById(UUID hallId) {
+        DBHall entity = em.find(DBHall.class, hallId);
+        return Optional.ofNullable(mapper.toDomain(entity));
+    }
+
+    @Override
+    public List<Hall> findAll() {
+        List<DBHall> list = em.createQuery("SELECT h FROM DBHall h", DBHall.class).getResultList();
+        return list.stream().map(mapper::toDomain).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Hall> findAllActive() {
+        List<DBHall> list = em.createQuery("SELECT h FROM DBHall h WHERE h.active = true", DBHall.class).getResultList();
+        return list.stream().map(mapper::toDomain).collect(Collectors.toList());
+    }
 }

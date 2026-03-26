@@ -24,9 +24,6 @@ public class DBHall {
     @GeneratedValue
     private UUID id;
 
-    @Column(name = "code", nullable = false, length = 64)
-    private String code;
-
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
@@ -48,7 +45,7 @@ public class DBHall {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected DBHall() {
+    public DBHall() {
     }
 
     public UUID getId() {
@@ -59,13 +56,6 @@ public class DBHall {
         this.id = id;
     }
 
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
 
     public String getName() {
         return name;

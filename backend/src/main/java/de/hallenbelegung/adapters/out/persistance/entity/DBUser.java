@@ -51,7 +51,7 @@ public class DBUser {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected DBUser() {
+    public DBUser() {
     }
 
     public UUID getId() {

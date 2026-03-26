@@ -32,9 +32,6 @@ public class DBBookingRequest {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "date", nullable = false)
-    private LocalDate date;
-
     @Column(name = "start_at", nullable = false)
     private LocalDateTime startAt;
 
@@ -71,7 +68,7 @@ public class DBBookingRequest {
     @Column(name = "processed_at")
     private Instant processedAt;
 
-    protected DBBookingRequest() {
+    public DBBookingRequest() {
     }
 
     public UUID getId() {
@@ -96,14 +93,6 @@ public class DBBookingRequest {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public LocalDate getDate() {
-        return date;
-    }
-
-    public void setDate(LocalDate date) {
-        this.date = date;
     }
 
     public LocalDateTime getStartAt() {

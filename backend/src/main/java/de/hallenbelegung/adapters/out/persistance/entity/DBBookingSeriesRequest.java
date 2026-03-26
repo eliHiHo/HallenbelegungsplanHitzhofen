@@ -80,7 +80,7 @@ public class DBBookingSeriesRequest {
     @Column(name = "processed_at")
     private Instant processedAt;
 
-    protected DBBookingSeriesRequest() {
+    public DBBookingSeriesRequest() {
     }
 
     public UUID getId() {

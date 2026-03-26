@@ -89,7 +89,7 @@ public class DBBooking {
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
-    protected DBBooking() {
+    public DBBooking() {
     }
 
     public UUID getId() {
