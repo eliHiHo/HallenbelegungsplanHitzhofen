@@ -39,7 +39,8 @@ public class JpaBlockedTimeRepository implements BlockedTimeRepositoryPort {
 
     @Override
     public List<BlockedTime> findByHallIdAndTimeRange(UUID hallId, LocalDateTime startTime, LocalDateTime endTime) {
-        List<DBBlockedTime> list = em.createQuery("SELECT b FROM DBBlockedTime b WHERE b.hall.id = :hallId AND b.startAt >= :start AND b.endAt <= :end", DBBlockedTime.class)
+        // overlap logic for blocked times on a hall
+        List<DBBlockedTime> list = em.createQuery("SELECT b FROM DBBlockedTime b WHERE b.hall.id = :hallId AND b.startAt < :end AND b.endAt > :start", DBBlockedTime.class)
                 .setParameter("hallId", hallId)
                 .setParameter("start", startTime)
                 .setParameter("end", endTime)
@@ -49,7 +50,8 @@ public class JpaBlockedTimeRepository implements BlockedTimeRepositoryPort {
 
     @Override
     public List<BlockedTime> findAllByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
-        List<DBBlockedTime> list = em.createQuery("SELECT b FROM DBBlockedTime b WHERE b.startAt >= :start AND b.endAt <= :end", DBBlockedTime.class)
+        // overlap logic for blocked times in general
+        List<DBBlockedTime> list = em.createQuery("SELECT b FROM DBBlockedTime b WHERE b.startAt < :end AND b.endAt > :start", DBBlockedTime.class)
                 .setParameter("start", startTime)
                 .setParameter("end", endTime)
                 .getResultList();

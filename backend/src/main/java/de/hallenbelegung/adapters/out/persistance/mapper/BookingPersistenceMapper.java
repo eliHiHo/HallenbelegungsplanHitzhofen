@@ -30,14 +30,19 @@ public class BookingPersistenceMapper {
                 entity.getEndAt(),
                 entity.getStatus(),
                 entity.getParticipantCount(),
-                entity.getConducted(),
+                Boolean.TRUE.equals(entity.getConducted()),
                 entity.getFeedbackComment(),
-                entity.getCancellationReason(),
+                entity.getCancelReason(),
                 hallMapper.toDomain(entity.getHall()),
                 userMapper.toDomain(entity.getResponsibleUser()),
                 seriesMapper.toDomain(entity.getBookingSeries()),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                userMapper.toDomain(entity.getCreatedBy()),
+                userMapper.toDomain(entity.getUpdatedBy()),
+                userMapper.toDomain(entity.getCancelledBy()),
+                entity.getCancelledAt(),
+                entity.getCancelReason()
         );
     }
 
@@ -65,9 +70,13 @@ public class BookingPersistenceMapper {
         entity.setParticipantCount(domain.getParticipantCount());
         entity.setConducted(domain.isConducted());
         entity.setFeedbackComment(domain.getFeedbackComment());
-        entity.setCancellationReason(domain.getCancellationReason());
+        entity.setCancelReason(domain.getCancelReason());
         entity.setHall(hallMapper.toEntity(domain.getHall()));
         entity.setResponsibleUser(userMapper.toEntity(domain.getResponsibleUser()));
         entity.setBookingSeries(seriesMapper.toEntity(domain.getBookingSeries()));
+        entity.setCreatedBy(userMapper.toEntity(domain.getCreatedBy()));
+        entity.setUpdatedBy(userMapper.toEntity(domain.getUpdatedBy()));
+        entity.setCancelledBy(userMapper.toEntity(domain.getCancelledBy()));
+        entity.setCancelledAt(domain.getCancelledAt());
     }
 }

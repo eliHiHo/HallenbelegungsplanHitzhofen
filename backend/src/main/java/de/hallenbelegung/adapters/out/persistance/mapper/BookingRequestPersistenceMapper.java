@@ -19,7 +19,6 @@ public class BookingRequestPersistenceMapper {
             return null;
         }
 
-        // Note: domain BookingRequest does not contain processedBy/processedAt fields
         return new BookingRequest(
                 entity.getId(),
                 entity.getTitle(),
@@ -30,8 +29,10 @@ public class BookingRequestPersistenceMapper {
                 entity.getRejectionReason(),
                 hallMapper.toDomain(entity.getHall()),
                 userMapper.toDomain(entity.getRequestedBy()),
+                userMapper.toDomain(entity.getProcessedBy()),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                entity.getProcessedAt()
         );
     }
 
@@ -53,14 +54,13 @@ public class BookingRequestPersistenceMapper {
         entity.setId(domain.getId());
         entity.setTitle(domain.getTitle());
         entity.setDescription(domain.getDescription());
-        // domain getter names: getstartAt / getendAt
-        entity.setStartAt(domain.getstartAt());
-        entity.setEndAt(domain.getendAt());
+        entity.setStartAt(domain.getStartAt());
+        entity.setEndAt(domain.getEndAt());
         entity.setStatus(domain.getStatus());
         entity.setRejectionReason(domain.getRejectionReason());
         entity.setHall(hallMapper.toEntity(domain.getHall()));
-        // domain exposes requesting user via requestedBy()
-        entity.setRequestedBy(userMapper.toEntity(domain.requestedBy()));
-        // processedBy/processedAt are not part of domain model and should be managed separately
+        entity.setRequestedBy(userMapper.toEntity(domain.getRequestedBy()));
+        entity.setProcessedBy(userMapper.toEntity(domain.getProcessedBy()));
+        entity.setProcessedAt(domain.getProcessedAt());
     }
 }

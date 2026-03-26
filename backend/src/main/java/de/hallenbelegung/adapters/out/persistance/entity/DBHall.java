@@ -9,15 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(
-        name = "halls",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_halls_code", columnNames = "code")
-        },
-        indexes = {
-                @Index(name = "idx_halls_active", columnList = "active")
-        }
-)
+@Table(name = "halls")
 public class DBHall {
 
     @Id

@@ -98,7 +98,6 @@ public class BookingRequestService implements
         BookingRequest request = BookingRequest.createNew(
                 title,
                 description,
-                startTime.toLocalDate(),
                 startTime,
                 endTime,
                 hall,
@@ -127,7 +126,7 @@ public class BookingRequestService implements
         BookingRequest request = bookingRequestRepository.findById(bookingRequestId)
                 .orElseThrow(() -> new NotFoundException("Booking request not found"));
 
-        if (!request.isOpen()) {
+        if (!request.isPending()) {
             throw new ValidationException("Booking request is not open");
         }
 
@@ -137,24 +136,24 @@ public class BookingRequestService implements
             throw new ForbiddenException("Hall inactive");
         }
 
-        LocalDateTime startTime = request.getstartAt();
-        LocalDateTime endTime = request.getendAt();
+        LocalDateTime startTime = request.getStartAt();
+        LocalDateTime endTime = request.getEndAt();
 
         checkForConflicts(hall, startTime, endTime);
 
         Booking booking = Booking.createNew(
                 request.getTitle(),
                 request.getDescription(),
-                request.getstartAt(),
-                request.getendAt(),
+                request.getStartAt(),
+                request.getEndAt(),
                 request.getHall(),
-                request.getRequestingUser(),
+                request.getRequestedBy(),
                 null
         );
 
         Booking savedBooking = bookingRepository.save(booking);
 
-        request.approve();
+        request.approve(admin);
         bookingRequestRepository.save(request);
 
         notificationPort.notifyRequesterAboutBookingRequestApproved(request, booking);
@@ -176,11 +175,11 @@ public class BookingRequestService implements
         BookingRequest request = bookingRequestRepository.findById(bookingRequestId)
                 .orElseThrow(() -> new NotFoundException("Booking request not found"));
 
-        if (!request.isOpen()) {
+        if (!request.isPending()) {
             throw new ValidationException("Booking request is not open");
         }
 
-        request.reject(reason);
+        request.reject(admin, reason);
         bookingRequestRepository.save(request);
 
         notificationPort.notifyRequesterAboutBookingRequestRejected(request, reason);
@@ -255,7 +254,7 @@ public class BookingRequestService implements
             return request;
         }
 
-        if (request.getRequestingUser().getId().equals(user.getId())) {
+        if (request.getRequestedBy().getId().equals(user.getId())) {
             return request;
         }
 

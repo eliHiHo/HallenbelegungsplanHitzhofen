@@ -1,7 +1,6 @@
 package de.hallenbelegung.application.domain.model;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
@@ -16,9 +15,11 @@ public class BookingRequest {
     private BookingRequestStatus status;
     private String rejectionReason;
     private Hall hall;
-    private User requestingUser;
+    private User requestedBy;
+    private User processedBy;
     private final Instant createdAt;
     private Instant updatedAt;
+    private Instant processedAt;
 
     public BookingRequest(
             UUID id,
@@ -29,9 +30,11 @@ public class BookingRequest {
             BookingRequestStatus status,
             String rejectionReason,
             Hall hall,
-            User requestingUser,
+            User requestedBy,
+            User processedBy,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            Instant processedAt
     ) {
         this.id = id;
         this.title = Objects.requireNonNull(title);
@@ -41,19 +44,20 @@ public class BookingRequest {
         this.status = Objects.requireNonNull(status);
         this.rejectionReason = rejectionReason;
         this.hall = Objects.requireNonNull(hall);
-        this.requestingUser = Objects.requireNonNull(requestingUser);
+        this.requestedBy = Objects.requireNonNull(requestedBy);
+        this.processedBy = processedBy;
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
+        this.processedAt = processedAt;
     }
 
     public static BookingRequest createNew(
             String title,
             String description,
-            LocalDate date,
             LocalDateTime startAt,
             LocalDateTime endAt,
             Hall hall,
-            User requestingUser
+            User requestedBy
     ) {
         Instant now = Instant.now();
 
@@ -66,9 +70,11 @@ public class BookingRequest {
                 BookingRequestStatus.PENDING,
                 null,
                 hall,
-                requestingUser,
+                requestedBy,
+                null,
                 now,
-                now
+                now,
+                null
         );
     }
 
@@ -84,11 +90,11 @@ public class BookingRequest {
         return description;
     }
 
-    public LocalDateTime getstartAt() {
+    public LocalDateTime getStartAt() {
         return startAt;
     }
 
-    public LocalDateTime getendAt() {
+    public LocalDateTime getEndAt() {
         return endAt;
     }
 
@@ -104,13 +110,12 @@ public class BookingRequest {
         return hall;
     }
 
-    public User requestedBy() {
-        return requestingUser;
+    public User getRequestedBy() {
+        return requestedBy;
     }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        // compatibility getter used in some services
-    public User getRequestingUser() {
-        return requestingUser;
+    public User getProcessedBy() {
+        return processedBy;
     }
 
     public Instant getCreatedAt() {
@@ -121,7 +126,11 @@ public class BookingRequest {
         return updatedAt;
     }
 
-    public boolean isOpen() {
+    public Instant getProcessedAt() {
+        return processedAt;
+    }
+
+    public boolean isPending() {
         return status == BookingRequestStatus.PENDING;
     }
 
@@ -133,15 +142,21 @@ public class BookingRequest {
         return status == BookingRequestStatus.REJECTED;
     }
 
-    public void approve() {
+    public void approve(User processedBy) {
+        Instant now = Instant.now();
         this.status = BookingRequestStatus.APPROVED;
         this.rejectionReason = null;
-        this.updatedAt = Instant.now();
+        this.processedBy = Objects.requireNonNull(processedBy);
+        this.processedAt = now;
+        this.updatedAt = now;
     }
 
-    public void reject(String rejectionReason) {
+    public void reject(User processedBy, String rejectionReason) {
+        Instant now = Instant.now();
         this.status = BookingRequestStatus.REJECTED;
         this.rejectionReason = rejectionReason;
-        this.updatedAt = Instant.now();
+        this.processedBy = Objects.requireNonNull(processedBy);
+        this.processedAt = now;
+        this.updatedAt = now;
     }
 }

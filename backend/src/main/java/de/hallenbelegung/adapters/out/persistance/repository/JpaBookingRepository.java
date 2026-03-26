@@ -47,7 +47,8 @@ public class JpaBookingRepository implements BookingRepositoryPort {
 
     @Override
     public List<Booking> findByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
-        List<DBBooking> list = em.createQuery("SELECT b FROM DBBooking b WHERE b.startAt >= :start AND b.endAt <= :end", DBBooking.class)
+        // overlap logic: any booking that starts before end and ends after start
+        List<DBBooking> list = em.createQuery("SELECT b FROM DBBooking b WHERE b.startAt < :end AND b.endAt > :start", DBBooking.class)
                 .setParameter("start", startTime)
                 .setParameter("end", endTime)
                 .getResultList();
@@ -56,7 +57,8 @@ public class JpaBookingRepository implements BookingRepositoryPort {
 
     @Override
     public List<Booking> findByHallIdAndTimeRange(UUID hallId, LocalDateTime startTime, LocalDateTime endTime) {
-        List<DBBooking> list = em.createQuery("SELECT b FROM DBBooking b WHERE b.hall.id = :hallId AND b.startAt >= :start AND b.endAt <= :end", DBBooking.class)
+        // overlap logic for a specific hall
+        List<DBBooking> list = em.createQuery("SELECT b FROM DBBooking b WHERE b.hall.id = :hallId AND b.startAt < :end AND b.endAt > :start", DBBooking.class)
                 .setParameter("hallId", hallId)
                 .setParameter("start", startTime)
                 .setParameter("end", endTime)

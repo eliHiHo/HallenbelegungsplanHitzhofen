@@ -235,4 +235,12 @@ public class DBBooking {
     public void setCancelledAt(Instant cancelledAt) {
         this.cancelledAt = cancelledAt;
     }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancellationReason = cancelReason;
+    }
+
+    public String getCancelReason() {
+        return cancellationReason;
+    }
 }

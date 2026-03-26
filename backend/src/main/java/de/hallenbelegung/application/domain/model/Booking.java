@@ -23,6 +23,11 @@ public class Booking {
     private BookingSeries bookingSeries;
     private final Instant createdAt;
     private Instant updatedAt;
+    private User createdBy;
+    private User updatedBy;
+    private User cancelledBy;
+    private Instant cancelledAt;
+    private String cancelReason;
 
     public Booking(
             UUID id,
@@ -39,7 +44,12 @@ public class Booking {
             User responsibleUser,
             BookingSeries bookingSeries,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            User createdBy,
+            User updatedBy,
+            User cancelledBy,
+            Instant cancelledAt,
+            String cancelReason
     ) {
         this.id = id;
         this.title = Objects.requireNonNull(title);
@@ -56,6 +66,11 @@ public class Booking {
         this.bookingSeries = bookingSeries;
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
+        this.createdBy = createdBy;
+        this.updatedBy = updatedBy;
+        this.cancelledBy = cancelledBy;
+        this.cancelledAt = cancelledAt;
+        this.cancelReason = cancelReason;
     }
 
     public static Booking createNew(
@@ -65,7 +80,12 @@ public class Booking {
             LocalDateTime endAt,
             Hall hall,
             User responsibleUser,
-            BookingSeries bookingSeries
+            BookingSeries bookingSeries,
+            User createdBy,
+            User updatedBy,
+            User cancelledBy,
+            Instant cancelledAt,
+            String cancelReason
     ) {
         Instant now = Instant.now();
 
@@ -84,8 +104,26 @@ public class Booking {
                 responsibleUser,
                 bookingSeries,
                 now,
-                now
+                now,
+                createdBy,
+                updatedBy,
+                cancelledBy,
+                cancelledAt,
+                cancelReason
         );
+    }
+
+    // Convenience overload used by services: minimal creation with common fields
+    public static Booking createNew(
+            String title,
+            String description,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
+            Hall hall,
+            User responsibleUser,
+            BookingSeries bookingSeries
+    ) {
+        return createNew(title, description, startAt, endAt, hall, responsibleUser, bookingSeries, null, null, null, null, null);
     }
 
     public UUID getId() {
@@ -108,7 +146,6 @@ public class Booking {
     public LocalDateTime getEndAt() {
         return endAt;
     }
-
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 // compatibility aliases (some code expects lowercase-named getters)
     public LocalDateTime getstartAt() {
         return getStartAt();
@@ -166,6 +203,22 @@ public class Booking {
         return status == BookingStatus.CANCELLED;
     }
 
+    public User getCreatedBy() {
+        return createdBy;
+    }
+    public User getUpdatedBy() {
+        return updatedBy;
+    }
+    public User getCancelledBy() {
+        return cancelledBy;
+    }
+    public Instant getCancelledAt() {
+        return cancelledAt;
+    }
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
     public void updateDetails(
             String title,
             String description,
@@ -186,6 +239,9 @@ public class Booking {
         this.status = BookingStatus.CANCELLED;
         this.cancellationReason = cancellationReason;
         this.updatedAt = Instant.now();
+        this.cancelledAt = Instant.now();
+        this.cancelReason = cancellationReason;
+        this.cancelledBy = this.updatedBy; // assuming the user performing the update is the one cancelling
     }
 
     public void addFeedback(Integer participantCount, String feedbackComment) {
