@@ -6,6 +6,7 @@ import de.hallenbelegung.adapters.in.api.mapper.BookingSeriesApiMapper;
 import de.hallenbelegung.application.domain.exception.UnauthorizedException;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.CancelBookingSeriesUseCase;
+import de.hallenbelegung.application.domain.port.in.CancelBookingSeriesOccurrenceUseCase;
 import de.hallenbelegung.application.domain.port.in.GetBookingSeriesUseCase;
 import de.hallenbelegung.application.domain.port.in.GetCurrentUserUseCase;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -33,15 +34,18 @@ public class BookingSeriesResource {
     private final GetCurrentUserUseCase getCurrentUserUseCase;
     private final GetBookingSeriesUseCase getBookingSeriesUseCase;
     private final CancelBookingSeriesUseCase cancelBookingSeriesUseCase;
+    private final CancelBookingSeriesOccurrenceUseCase cancelBookingSeriesOccurrenceUseCase;
 
     public BookingSeriesResource(
             GetCurrentUserUseCase getCurrentUserUseCase,
             GetBookingSeriesUseCase getBookingSeriesUseCase,
-            CancelBookingSeriesUseCase cancelBookingSeriesUseCase
+            CancelBookingSeriesUseCase cancelBookingSeriesUseCase,
+            CancelBookingSeriesOccurrenceUseCase cancelBookingSeriesOccurrenceUseCase
     ) {
         this.getCurrentUserUseCase = getCurrentUserUseCase;
         this.getBookingSeriesUseCase = getBookingSeriesUseCase;
         this.cancelBookingSeriesUseCase = cancelBookingSeriesUseCase;
+        this.cancelBookingSeriesOccurrenceUseCase = cancelBookingSeriesOccurrenceUseCase;
     }
 
     @GET
@@ -69,6 +73,25 @@ public class BookingSeriesResource {
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
         cancelBookingSeriesUseCase.cancelSeries(currentUser.getId(), id, reason);
+        return Response.ok(new EmptyResponseDTO()).build();
+    }
+
+    /**
+     * Cancels a single occurrence (booking) of a booking series.
+     * The optional cancellation reason is passed as a query parameter.
+     */
+    @DELETE
+    @Path("/{id}/occurrences/{bookingId}")
+    public Response cancelOccurrence(
+            @PathParam("id") UUID bookingSeriesId,
+            @PathParam("bookingId") UUID bookingId,
+            @QueryParam("reason") String reason,
+            @CookieParam(SESSION_COOKIE_NAME) String sessionId
+    ) {
+        User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
+        cancelBookingSeriesOccurrenceUseCase.cancelSingleOccurrence(
+                currentUser.getId(), bookingSeriesId, bookingId, reason
+        );
         return Response.ok(new EmptyResponseDTO()).build();
     }
 

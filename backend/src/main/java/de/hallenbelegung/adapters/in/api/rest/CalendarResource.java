@@ -3,6 +3,7 @@ package de.hallenbelegung.adapters.in.api.rest;
 import de.hallenbelegung.adapters.in.api.dto.CalendarDayDTO;
 import de.hallenbelegung.adapters.in.api.dto.CalendarWeekDTO;
 import de.hallenbelegung.adapters.in.api.mapper.CalendarApiMapper;
+import de.hallenbelegung.application.domain.exception.UnauthorizedException;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.GetCalendarDayUseCase;
 import de.hallenbelegung.application.domain.port.in.GetCalendarWeekUseCase;
@@ -17,7 +18,9 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -47,7 +50,9 @@ public class CalendarResource {
             @QueryParam("weekStart") LocalDate weekStart,
             @CookieParam(SESSION_COOKIE_NAME) String sessionId
     ) {
-        LocalDate effectiveWeekStart = weekStart != null ? weekStart : LocalDate.now();
+        LocalDate referenceDate = weekStart != null ? weekStart : LocalDate.now();
+        // Normalize to Monday-based week start (Monday..Sunday)
+        LocalDate effectiveWeekStart = referenceDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         UUID currentUserId = resolveCurrentUserId(sessionId);
 
         CalendarWeekView view = getCalendarWeekUseCase.getWeek(effectiveWeekStart, currentUserId);
@@ -72,7 +77,12 @@ public class CalendarResource {
             return null;
         }
 
-        User currentUser = getCurrentUserUseCase.getCurrentUser(sessionId);
-        return currentUser.getId();
+        try {
+            User currentUser = getCurrentUserUseCase.getCurrentUser(sessionId);
+            return currentUser.getId();
+        } catch (UnauthorizedException e) {
+            // Treat invalid/expired session as anonymous for public calendar endpoints
+            return null;
+        }
     }
 }
