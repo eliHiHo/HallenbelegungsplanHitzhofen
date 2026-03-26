@@ -3,16 +3,17 @@ package de.hallenbelegung.adapters.in.api.dto;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record BookingRequestDTO(
+public record CalendarEntryDTO(
         UUID id,
+        String type,
         String title,
         String description,
         LocalDateTime startDateTime,
         LocalDateTime endDateTime,
         UUID hallId,
         String hallName,
-        String requestedByName,
+        String responsibleUserName,
         String status,
-        String rejectionReason
+        boolean ownEntry
 ) {
 }

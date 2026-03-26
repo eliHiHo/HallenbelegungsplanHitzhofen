@@ -1,4 +1,7 @@
 package de.hallenbelegung.adapters.in.api.dto;
 
-public class HallStatisticsDTO {
+public record HallStatisticsDTO(
+        String hallName,
+        long bookingCount
+) {
 }

@@ -1,4 +1,6 @@
 package de.hallenbelegung.adapters.in.api.dto;
 
-public class ErrorResponseDTO {
+public record ErrorResponseDTO(
+        String message
+) {
 }

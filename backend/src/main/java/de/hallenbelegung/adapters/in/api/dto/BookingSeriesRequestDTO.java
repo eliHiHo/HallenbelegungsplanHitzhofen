@@ -1,4 +1,23 @@
 package de.hallenbelegung.adapters.in.api.dto;
 
-public class BookingSeriesRequestDTO {
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.UUID;
+
+public record BookingSeriesRequestDTO(
+        UUID id,
+        String title,
+        String description,
+        DayOfWeek weekday,
+        LocalTime startTime,
+        LocalTime endTime,
+        LocalDate startDate,
+        LocalDate endDate,
+        UUID hallId,
+        String hallName,
+        String requestedByName,
+        String status,
+        String rejectionReason
+) {
 }
