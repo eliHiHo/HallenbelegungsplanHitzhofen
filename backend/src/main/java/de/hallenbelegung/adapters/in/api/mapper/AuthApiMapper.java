@@ -6,11 +6,17 @@ import de.hallenbelegung.application.domain.model.User;
 public class AuthApiMapper {
 
     public static LoginResponseDTO toLoginResponse(String token, User user) {
+        if (user == null) {
+            return new LoginResponseDTO(token, null, null, null, null, null);
+        }
+
         return new LoginResponseDTO(
                 token,
-                user != null ? user.getId() : null,
-                user != null ? user.getEmail() : null,
-                user != null ? user.getRole().name() : null
+                user.getId(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getRole() != null ? user.getRole().name() : null
         );
     }
 }

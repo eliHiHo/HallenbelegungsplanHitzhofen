@@ -8,7 +8,8 @@ public class UserApiMapper {
     public static UserDTO toDTO(User u) {
         return new UserDTO(
                 u.getId(),
-                u.getFullName().replaceAll(" .*", ""),
+                u.getFirstName(),
+                u.getLastName(),
                 u.getFullName(),
                 u.getEmail(),
                 u.getRole().name(),
