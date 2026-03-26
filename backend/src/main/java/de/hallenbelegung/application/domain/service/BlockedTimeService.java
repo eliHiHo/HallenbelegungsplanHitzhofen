@@ -27,6 +27,8 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 @Transactional
@@ -34,6 +36,8 @@ public class BlockedTimeService implements
         CreateBlockedTimeUseCase,
         GetBlockedTimeUseCase,
         DeleteBlockedTimeUseCase {
+    private static final Logger logger = Logger.getLogger(BlockedTimeService.class.getName());
+
     private final BlockedTimeRepositoryPort blockedTimeRepository;
     private final BookingRepositoryPort bookingRepository;
     private final UserRepositoryPort userRepository;
@@ -63,27 +67,48 @@ public class BlockedTimeService implements
     void init() {
         // Sync current and next year on startup
         LocalDate today = LocalDate.now(clock);
-        syncPublicHolidaysForYear(today.getYear());
-        syncPublicHolidaysForYear(today.getYear() + 1);
+        try {
+            syncPublicHolidaysForYear(today.getYear());
+            syncPublicHolidaysForYear(today.getYear() + 1);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Failed to sync public holidays during init", e);
+        }
     }
 
     // Run once yearly on Jan 1st at 00:00 to refresh public holidays
     @Scheduled(cron = "0 0 0 1 1 ?")
     public void scheduledAnnualSync() {
         int year = LocalDate.now(clock).getYear();
-        syncPublicHolidaysForYear(year);
+        try {
+            syncPublicHolidaysForYear(year);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Failed to sync public holidays (scheduled)", e);
+        }
     }
 
     public void syncPublicHolidaysForYear(int year) {
         // find a full hall
         Optional<Hall> fullHall = hallRepository.findAllActive().stream().filter(Hall::isFullHall).findFirst();
-        if (fullHall.isEmpty()) return; // nothing to block
+        if (fullHall.isEmpty()) {
+            logger.log(Level.WARNING, "Skipping public holiday sync for year {0}: no full hall configured", year);
+            return; // nothing to block
+        }
 
         // find an admin user to attribute the blocked times
         Optional<User> adminUser = userRepository.findAllActive().stream().filter(User::isAdmin).findFirst();
-        if (adminUser.isEmpty()) return; // cannot create without a user
+        if (adminUser.isEmpty()) {
+            logger.log(Level.WARNING, "Skipping public holiday sync for year {0}: no active admin user found", year);
+            return; // cannot create without a user
+        }
 
-        List<LocalDate> holidays = publicHolidayPort.findHolidays(LocalDate.of(year,1,1), LocalDate.of(year,12,31));
+        List<LocalDate> holidays;
+        try {
+            holidays = publicHolidayPort.findHolidays(LocalDate.of(year,1,1), LocalDate.of(year,12,31));
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Failed to retrieve public holidays for year " + year, e);
+            return;
+        }
+
         for (LocalDate d : holidays) {
             LocalDateTime startAt = d.atStartOfDay();
             LocalDateTime endAt = d.plusDays(1).atStartOfDay();
@@ -105,7 +130,11 @@ public class BlockedTimeService implements
                     fullHall.get(),
                     adminUser.get()
             );
-            blockedTimeRepository.save(blockedTime);
+            try {
+                blockedTimeRepository.save(blockedTime);
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Failed to persist public holiday blocked time for date " + d, e);
+            }
         }
     }
 
@@ -129,7 +158,10 @@ public class BlockedTimeService implements
         }
         validateCreateInput(reason, startTime, endTime);
         validateTimeGrid(startTime, endTime);
-        validateOpeningHours(startTime.toLocalTime(), endTime.toLocalTime());
+        // Only enforce opening hours for single-day blocked times; multi-day maintenance/renovation may span full days
+        if (startTime.toLocalDate().isEqual(endTime.toLocalDate())) {
+            validateOpeningHours(startTime.toLocalTime(), endTime.toLocalTime());
+        }
         checkForBookingConflicts(hall, startTime, endTime);
         checkForBlockedTimeConflicts(hall, startTime, endTime);
         BlockedTime blockedTime = BlockedTime.createNew(

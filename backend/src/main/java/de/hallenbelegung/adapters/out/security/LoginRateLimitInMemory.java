@@ -1,5 +1,6 @@
 package de.hallenbelegung.adapters.out.security;
 
+import de.hallenbelegung.application.domain.exception.RateLimitException;
 import de.hallenbelegung.application.domain.port.out.LoginRateLimitPort;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -30,7 +31,7 @@ public class LoginRateLimitInMemory implements LoginRateLimitPort {
         Instant now = Instant.now();
         Instant locked = lockedUntil.get(key);
         if (locked != null && locked.isAfter(now)) {
-            throw new RuntimeException("Too many failed login attempts");
+            throw new RateLimitException("Too many failed login attempts");
         }
     }
 
@@ -66,7 +67,7 @@ public class LoginRateLimitInMemory implements LoginRateLimitPort {
             deque.removeFirst();
         }
         if (deque.size() >= MAX_PASSWORD_RESET) {
-            throw new RuntimeException("Too many password reset requests");
+            throw new RateLimitException("Too many password reset requests");
         }
     }
 

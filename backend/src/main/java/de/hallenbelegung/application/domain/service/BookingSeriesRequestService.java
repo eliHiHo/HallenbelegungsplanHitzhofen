@@ -11,6 +11,7 @@ import de.hallenbelegung.application.domain.model.Hall;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.*;
 import de.hallenbelegung.application.domain.port.out.*;
+import de.hallenbelegung.application.domain.view.BookingSeriesApproveResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
@@ -114,7 +115,7 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         return saved.getId();
     }
 
-    public void approve(UUID adminUserId, UUID bookingSeriesRequestId) {
+    public BookingSeriesApproveResult approve(UUID adminUserId, UUID bookingSeriesRequestId) {
 
         User admin = loadActiveUser(adminUserId);
 
@@ -166,24 +167,39 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
 
         BookingSeries savedSeries = bookingSeriesRepository.save(bookingSeries);
 
-        for (LocalDate date : conflictFreeDates) {
-            Booking booking = Booking.createNew(
-                    request.getTitle(),
-                    request.getDescription(),
-                    date.atTime(request.getStartTime()),
-                    date.atTime(request.getEndTime()),
-                    hall,
-                    request.getRequestedBy(),
-                    savedSeries
-            );
+        List<UUID> createdBookingIds = new java.util.ArrayList<>();
+        List<LocalDate> skippedDates = new java.util.ArrayList<>();
 
-            bookingRepository.save(booking);
+        for (LocalDate date : occurrences) {
+            if (conflictFreeDates.contains(date)) {
+                Booking booking = Booking.createNew(
+                        request.getTitle(),
+                        request.getDescription(),
+                        date.atTime(request.getStartTime()),
+                        date.atTime(request.getEndTime()),
+                        hall,
+                        request.getRequestedBy(),
+                        savedSeries,
+                        admin, // createdBy: admin who approves the series occurrences
+                        null,
+                        null,
+                        null,
+                        null
+                );
+
+                Booking saved = bookingRepository.save(booking);
+                createdBookingIds.add(saved.getId());
+            } else {
+                skippedDates.add(date);
+            }
         }
 
         request.approve(admin);
         bookingSeriesRequestRepository.save(request);
 
         notificationPort.notifyRequesterAboutBookingSeriesRequestApproved(request, bookingSeries);
+
+        return new BookingSeriesApproveResult(createdBookingIds, skippedDates);
 
         // TODO: Optional Konflikttage für spätere Anzeige/Info separat protokollieren
     }
@@ -469,4 +485,8 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
                 .toList();
     }
 }
+
+
+
+
 

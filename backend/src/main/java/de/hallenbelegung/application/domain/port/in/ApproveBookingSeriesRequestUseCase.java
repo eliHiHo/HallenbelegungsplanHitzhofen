@@ -1,7 +1,9 @@
 package de.hallenbelegung.application.domain.port.in;
 
+import de.hallenbelegung.application.domain.view.BookingSeriesApproveResult;
+
 import java.util.UUID;
 
 public interface ApproveBookingSeriesRequestUseCase {
-    void approve(UUID adminUserId, UUID bookingSeriesRequestId);
+    BookingSeriesApproveResult approve(UUID adminUserId, UUID bookingSeriesRequestId);
 }

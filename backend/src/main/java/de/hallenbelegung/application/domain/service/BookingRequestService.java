@@ -148,6 +148,11 @@ public class BookingRequestService implements
                 request.getEndAt(),
                 request.getHall(),
                 request.getRequestedBy(),
+                null,
+                admin, // createdBy: the admin who approves/creates the booking
+                null,
+                null,
+                null,
                 null
         );
 
@@ -257,6 +262,7 @@ public class BookingRequestService implements
         if (request.getRequestedBy().getId().equals(user.getId())) {
             return request;
         }
+
 
         throw new ForbiddenException("User not allowed to view this booking request");
     }

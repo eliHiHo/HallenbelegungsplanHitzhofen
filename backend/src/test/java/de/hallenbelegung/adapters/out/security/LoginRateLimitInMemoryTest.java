@@ -1,5 +1,6 @@
 package de.hallenbelegung.adapters.out.security;
 
+import de.hallenbelegung.application.domain.exception.RateLimitException;
 import de.hallenbelegung.application.domain.port.out.LoginRateLimitPort;
 import org.junit.jupiter.api.Test;
 
@@ -20,8 +21,8 @@ public class LoginRateLimitInMemoryTest {
             limiter.recordFailedLogin(key);
         }
 
-        // now checkLoginAllowed should throw
-        assertThrows(RuntimeException.class, () -> limiter.checkLoginAllowed(key));
+        // now checkLoginAllowed should throw RateLimitException
+        assertThrows(RateLimitException.class, () -> limiter.checkLoginAllowed(key));
 
         // reset and then allowed
         limiter.resetLoginFailures(key);

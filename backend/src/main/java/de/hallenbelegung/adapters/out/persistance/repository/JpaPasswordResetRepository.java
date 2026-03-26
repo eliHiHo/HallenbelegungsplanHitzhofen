@@ -3,7 +3,7 @@ package de.hallenbelegung.adapters.out.persistance.repository;
 import de.hallenbelegung.adapters.out.persistance.entity.DBPasswordResetToken;
 import de.hallenbelegung.adapters.out.persistance.entity.DBUser;
 import de.hallenbelegung.application.domain.port.out.PasswordResetPort;
-import de.hallenbelegung.application.domain.port.out.PasswordHashingPort;
+import de.hallenbelegung.application.domain.port.out.TokenHashingPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -22,7 +22,7 @@ public class JpaPasswordResetRepository implements PasswordResetPort {
     EntityManager em;
 
     @Inject
-    PasswordHashingPort hashing;
+    TokenHashingPort hashing;
 
     private final SecureRandom secureRandom = new SecureRandom();
 

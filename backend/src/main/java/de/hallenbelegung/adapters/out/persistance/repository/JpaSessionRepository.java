@@ -5,7 +5,7 @@ import de.hallenbelegung.adapters.out.persistance.entity.DBUser;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.out.SessionPort;
 import de.hallenbelegung.application.domain.view.SessionUserView;
-import de.hallenbelegung.application.domain.port.out.PasswordHashingPort;
+import de.hallenbelegung.application.domain.port.out.TokenHashingPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -24,7 +24,7 @@ public class JpaSessionRepository implements SessionPort {
     EntityManager em;
 
     @Inject
-    PasswordHashingPort hashing;
+    TokenHashingPort hashing;
 
     private final SecureRandom secureRandom = new SecureRandom();
 

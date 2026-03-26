@@ -135,7 +135,11 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
             for (BookingSeriesRequest request : openSeriesRequests) {
                 if (canSeeBookingSeriesRequest(request, currentUser)
                         && isSeriesRequestInRange(request, start, end)) {
-                    entries.add(mapBookingSeriesRequestToEntry(request, currentUser, start, end));
+                    // add an entry for every occurrence in the given range
+                    List<LocalDate> occurrences = listOccurrencesInRange(request, start, end);
+                    for (LocalDate occ : occurrences) {
+                        entries.add(mapBookingSeriesRequestOccurrenceToEntry(request, currentUser, occ));
+                    }
                 }
             }
         }
@@ -215,32 +219,21 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
         );
     }
 
-    private CalendarEntryView mapBookingSeriesRequestToEntry(
+    private CalendarEntryView mapBookingSeriesRequestOccurrenceToEntry(
             BookingSeriesRequest request,
             User currentUser,
-            LocalDateTime rangeStart,
-            LocalDateTime rangeEnd
+            LocalDate occurrenceDate
     ) {
         boolean ownEntry = currentUser != null
                 && request.getRequestedBy().getId().equals(currentUser.getId());
-
-        LocalDate firstOccurrence = findFirstOccurrenceInRange(
-                request,
-                rangeStart.toLocalDate(),
-                rangeEnd.minusDays(1).toLocalDate()
-        );
-
-        if (firstOccurrence == null) {
-            throw new ValidationException("Booking series request has no occurrence in requested calendar range");
-        }
 
         return new CalendarEntryView(
                 request.getId(),
                 CalendarEntryType.BOOKING_SERIES_REQUEST,
                 request.getTitle(),
                 request.getDescription(),
-                firstOccurrence.atTime(request.getStartTime()),
-                firstOccurrence.atTime(request.getEndTime()),
+                occurrenceDate.atTime(request.getStartTime()),
+                occurrenceDate.atTime(request.getEndTime()),
                 request.getHall().getId(),
                 request.getHall().getName(),
                 request.getRequestedBy().getFullName(),
@@ -287,29 +280,28 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
         return false;
     }
 
-    private LocalDate findFirstOccurrenceInRange(
-            BookingSeriesRequest request,
-            LocalDate rangeStart,
-            LocalDate rangeEnd
-    ) {
-        LocalDate effectiveStart = rangeStart.isAfter(request.getStartDate())
-                ? rangeStart
+    private List<LocalDate> listOccurrencesInRange(BookingSeriesRequest request, LocalDateTime rangeStart, LocalDateTime rangeEnd) {
+        LocalDate weekStartDate = rangeStart.toLocalDate();
+        LocalDate weekEndDate = rangeEnd.minusDays(1).toLocalDate();
+
+        LocalDate firstPossibleDate = weekStartDate.isAfter(request.getStartDate())
+                ? weekStartDate
                 : request.getStartDate();
 
-        LocalDate effectiveEnd = rangeEnd.isBefore(request.getEndDate())
-                ? rangeEnd
+        LocalDate lastPossibleDate = weekEndDate.isBefore(request.getEndDate())
+                ? weekEndDate
                 : request.getEndDate();
 
-        if (effectiveStart.isAfter(effectiveEnd)) {
-            return null;
-        }
+        List<LocalDate> list = new ArrayList<>();
+        if (firstPossibleDate.isAfter(lastPossibleDate)) return list;
 
-        for (LocalDate date = effectiveStart; !date.isAfter(effectiveEnd); date = date.plusDays(1)) {
+        for (LocalDate date = firstPossibleDate; !date.isAfter(lastPossibleDate); date = date.plusDays(1)) {
             if (date.getDayOfWeek().equals(request.getWeekday())) {
-                return date;
+                list.add(date);
             }
         }
-
-        return null;
+        return list;
     }
+
 }
+
