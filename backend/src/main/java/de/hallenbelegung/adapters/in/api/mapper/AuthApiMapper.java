@@ -3,7 +3,9 @@ package de.hallenbelegung.adapters.in.api.mapper;
 import de.hallenbelegung.adapters.in.api.dto.LoginResponseDTO;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.view.AuthSessionView;
+import jakarta.enterprise.context.ApplicationScoped;
 
+@ApplicationScoped
 public class AuthApiMapper {
 
     public static LoginResponseDTO toLoginResponse(AuthSessionView view) {

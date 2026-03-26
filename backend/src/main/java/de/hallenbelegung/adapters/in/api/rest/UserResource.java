@@ -1,5 +1,6 @@
 package de.hallenbelegung.adapters.in.api.rest;
 
+import de.hallenbelegung.adapters.in.api.dto.CreateUserDTO;
 import de.hallenbelegung.adapters.in.api.dto.EmptyResponseDTO;
 import de.hallenbelegung.adapters.in.api.dto.UserDTO;
 import de.hallenbelegung.adapters.in.api.mapper.UserApiMapper;
@@ -23,7 +24,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -79,36 +79,22 @@ public class UserResource {
 
     /**
      * Creates a new user (admin only – service enforces role check).
-     *
-     * Uses a Map body because no dedicated CreateUserDTO with a password field exists yet.
-     * Expected body:
-     * {
-     *   "firstName":  "Max",
-     *   "lastName":   "Mustermann",
-     *   "email":      "max@example.com",
-     *   "password":   "secret123",
-     *   "role":       "CLUB_REPRESENTATIVE"
-     * }
-     *
-     * NOTE: Once a proper CreateUserDTO (including the password field) is added to the project,
-     * this method should be refactored to accept that DTO instead.
      */
     @POST
     public Response createUser(
-            Map<String, String> body,
+            CreateUserDTO dto,
             @CookieParam(SESSION_COOKIE_NAME) String sessionId
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
 
-        String roleValue = body != null ? body.get("role") : null;
-        Role role = roleValue != null ? Role.valueOf(roleValue) : null;
+        Role role = dto != null && dto.role() != null ? Role.valueOf(dto.role()) : null;
 
         UUID created = createUserUseCase.createUser(
                 currentUser.getId(),
-                body != null ? body.get("firstName") : null,
-                body != null ? body.get("lastName") : null,
-                body != null ? body.get("email") : null,
-                body != null ? body.get("password") : null,
+                dto != null ? dto.firstName() : null,
+                dto != null ? dto.lastName() : null,
+                dto != null ? dto.email() : null,
+                dto != null ? dto.password() : null,
                 role
         );
 

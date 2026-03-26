@@ -1,22 +1,33 @@
 package de.hallenbelegung.adapters.in.api.rest;
 
 import de.hallenbelegung.adapters.in.api.dto.HallStatisticsDTO;
+import de.hallenbelegung.adapters.in.api.dto.SeriesOccurrenceDTO;
 import de.hallenbelegung.adapters.in.api.dto.SeriesStatisticsDTO;
+import de.hallenbelegung.adapters.in.api.dto.SeriesStatisticsDetailDTO;
+import de.hallenbelegung.adapters.in.api.dto.SeriesUsageDTO;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.GetCurrentUserUseCase;
 import de.hallenbelegung.application.domain.port.in.GetHallStatisticsUseCase;
+import de.hallenbelegung.application.domain.port.in.GetSeriesStatisticsDetailUseCase;
 import de.hallenbelegung.application.domain.port.in.GetSeriesStatisticsOverviewUseCase;
+import de.hallenbelegung.application.domain.view.HallStatisticsView;
+import de.hallenbelegung.application.domain.view.SeriesOccurrenceStatisticsView;
+import de.hallenbelegung.application.domain.view.SeriesStatisticsDetailView;
+import de.hallenbelegung.application.domain.view.SeriesStatisticsOverviewView;
+import de.hallenbelegung.application.domain.view.SeriesUsageView;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.CookieParam;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @ApplicationScoped
 @Path("/statistics")
@@ -29,20 +40,18 @@ public class StatisticsResource {
     private final GetCurrentUserUseCase getCurrentUserUseCase;
     private final GetHallStatisticsUseCase getHallStatisticsUseCase;
     private final GetSeriesStatisticsOverviewUseCase getSeriesStatisticsOverviewUseCase;
-
-    // NOTE: GetSeriesStatisticsDetailUseCase is NOT injected here because no suitable
-    // response DTO exists for SeriesStatisticsDetailView. The endpoint
-    // GET /statistics/series/{id} is intentionally not implemented yet.
-    // See "Offene Lücken" in the implementation documentation.
+    private final GetSeriesStatisticsDetailUseCase getSeriesStatisticsDetailUseCase;
 
     public StatisticsResource(
             GetCurrentUserUseCase getCurrentUserUseCase,
             GetHallStatisticsUseCase getHallStatisticsUseCase,
-            GetSeriesStatisticsOverviewUseCase getSeriesStatisticsOverviewUseCase
+            GetSeriesStatisticsOverviewUseCase getSeriesStatisticsOverviewUseCase,
+            GetSeriesStatisticsDetailUseCase getSeriesStatisticsDetailUseCase
     ) {
         this.getCurrentUserUseCase = getCurrentUserUseCase;
         this.getHallStatisticsUseCase = getHallStatisticsUseCase;
         this.getSeriesStatisticsOverviewUseCase = getSeriesStatisticsOverviewUseCase;
+        this.getSeriesStatisticsDetailUseCase = getSeriesStatisticsDetailUseCase;
     }
 
     /**
@@ -71,7 +80,7 @@ public class StatisticsResource {
         return getHallStatisticsUseCase
                 .getHallStatistics(currentUser.getId(), effectiveFrom, effectiveTo)
                 .stream()
-                .map(v -> new HallStatisticsDTO(v.getHallName(), v.getTotalBookings()))
+                .map(this::toHallStatisticsDTO)
                 .toList();
     }
 
@@ -101,16 +110,104 @@ public class StatisticsResource {
         return getSeriesStatisticsOverviewUseCase
                 .getSeriesStatisticsOverview(currentUser.getId(), effectiveFrom, effectiveTo)
                 .stream()
-                .map(v -> new SeriesStatisticsDTO(v.getTitle(), v.getTotalAppointments()))
+                .map(this::toSeriesStatisticsDTO)
                 .toList();
     }
 
-    // GET /statistics/series/{id} is NOT implemented here.
-    // Reason: GetSeriesStatisticsDetailUseCase returns SeriesStatisticsDetailView,
-    // which contains a rich structure (occurrences list, averageParticipants, etc.)
-    // for which no matching response DTO exists in the project.
-    // A dedicated SeriesStatisticsDetailDTO (mirroring SeriesStatisticsDetailView)
-    // must be added before this endpoint can be implemented.
+    /**
+     * Returns detailed statistics for a specific booking series, including occurrence-level data.
+     *
+     * @param id    ID of the booking series
+     * @param from  start of the period (inclusive), defaults to first day of current year
+     * @param to    end of the period (inclusive), defaults to today
+     */
+    @GET
+    @Path("/series/{id}")
+    public SeriesStatisticsDetailDTO getSeriesStatisticsDetail(
+            @PathParam("id") UUID id,
+            @QueryParam("from") LocalDate from,
+            @QueryParam("to") LocalDate to,
+            @CookieParam(SESSION_COOKIE_NAME) String sessionId
+    ) {
+        User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
+
+        LocalDate effectiveFrom = from != null ? from : LocalDate.now().withDayOfYear(1);
+        LocalDate effectiveTo = to != null ? to : LocalDate.now();
+
+        SeriesStatisticsDetailView view = getSeriesStatisticsDetailUseCase.getSeriesStatisticsDetail(
+                currentUser.getId(), id, effectiveFrom, effectiveTo
+        );
+
+        return toSeriesStatisticsDetailDTO(view);
+    }
+
+    private HallStatisticsDTO toHallStatisticsDTO(HallStatisticsView v) {
+        List<SeriesUsageDTO> top = v.getTopSeries().stream()
+                .map(this::toSeriesUsageDTO)
+                .toList();
+
+        return new HallStatisticsDTO(
+                v.getHallId(),
+                v.getHallName(),
+                v.getTotalBookings(),
+                v.getCancelledBookings(),
+                v.getTotalParticipants(),
+                v.getUtilizationPercent(),
+                top
+        );
+    }
+
+    private SeriesUsageDTO toSeriesUsageDTO(SeriesUsageView v) {
+        return new SeriesUsageDTO(
+                v.getBookingSeriesId(),
+                v.getTitle(),
+                v.getBookingCount()
+        );
+    }
+
+    private SeriesStatisticsDTO toSeriesStatisticsDTO(SeriesStatisticsOverviewView v) {
+        return new SeriesStatisticsDTO(
+                v.getBookingSeriesId(),
+                v.getTitle(),
+                v.getHallName(),
+                v.getTotalAppointments(),
+                v.getConductedAppointments(),
+                v.getCancelledAppointments(),
+                v.getTotalParticipants(),
+                v.getAverageParticipants()
+        );
+    }
+
+    private SeriesOccurrenceDTO toSeriesOccurrenceDTO(SeriesOccurrenceStatisticsView v) {
+        return new SeriesOccurrenceDTO(
+                v.getBookingId(),
+                v.getStartDateTime(),
+                v.getEndDateTime(),
+                v.isCancelled(),
+                v.isConducted(),
+                v.getParticipantCount(),
+                v.getFeedbackComment()
+        );
+    }
+
+    private SeriesStatisticsDetailDTO toSeriesStatisticsDetailDTO(SeriesStatisticsDetailView v) {
+        List<SeriesOccurrenceDTO> occ = v.getOccurrences().stream()
+                .map(this::toSeriesOccurrenceDTO)
+                .toList();
+
+        return new SeriesStatisticsDetailDTO(
+                v.getBookingSeriesId(),
+                v.getTitle(),
+                v.getHallName(),
+                v.getResponsibleUserName(),
+                v.getTotalAppointments(),
+                v.getConductedAppointments(),
+                v.getCancelledAppointments(),
+                v.getTotalParticipants(),
+                v.getAverageParticipants(),
+                occ
+        );
+    }
 
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {

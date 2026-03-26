@@ -1,9 +1,9 @@
-
 package de.hallenbelegung.adapters.in.api.rest;
 
 import de.hallenbelegung.adapters.in.api.dto.BookingSeriesApproveResultDTO;
 import de.hallenbelegung.adapters.in.api.dto.BookingSeriesRequestDTO;
 import de.hallenbelegung.adapters.in.api.dto.EmptyResponseDTO;
+import de.hallenbelegung.adapters.in.api.dto.RejectionDTO;
 import de.hallenbelegung.adapters.in.api.mapper.BookingSeriesRequestApiMapper;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.ApproveBookingSeriesRequestUseCase;
@@ -26,7 +26,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -137,11 +136,11 @@ public class BookingSeriesRequestResource {
     @Path("/{id}/reject")
     public Response reject(
             @PathParam("id") UUID id,
-            Map<String, String> body,
+            RejectionDTO body,
             @CookieParam(SESSION_COOKIE_NAME) String sessionId
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
-        String reason = body != null ? body.get("reason") : null;
+        String reason = body != null ? body.reason() : null;
         rejectBookingSeriesRequestUseCase.reject(currentUser.getId(), id, reason);
         return Response.ok(new EmptyResponseDTO()).build();
     }

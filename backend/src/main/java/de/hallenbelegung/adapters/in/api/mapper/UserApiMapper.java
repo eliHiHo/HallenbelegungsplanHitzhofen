@@ -2,7 +2,9 @@ package de.hallenbelegung.adapters.in.api.mapper;
 
 import de.hallenbelegung.adapters.in.api.dto.UserDTO;
 import de.hallenbelegung.application.domain.model.User;
+import jakarta.enterprise.context.ApplicationScoped;
 
+@ApplicationScoped
 public class UserApiMapper {
 
     public static UserDTO toDTO(User u) {

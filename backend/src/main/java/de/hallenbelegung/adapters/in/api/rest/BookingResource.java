@@ -2,6 +2,7 @@ package de.hallenbelegung.adapters.in.api.rest;
 
 import de.hallenbelegung.adapters.in.api.dto.BookingDTO;
 import de.hallenbelegung.adapters.in.api.dto.BookingRequestDTO;
+import de.hallenbelegung.adapters.in.api.dto.BookingFeedbackDTO;
 import de.hallenbelegung.adapters.in.api.dto.EmptyResponseDTO;
 import de.hallenbelegung.adapters.in.api.mapper.BookingApiMapper;
 import de.hallenbelegung.application.domain.model.User;
@@ -24,7 +25,6 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-import java.util.Map;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -116,16 +116,13 @@ public class BookingResource {
     @Path("/{id}/feedback")
     public Response updateFeedback(
             @PathParam("id") UUID id,
-            Map<String, Object> body,
+            BookingFeedbackDTO body,
             @CookieParam(SESSION_COOKIE_NAME) String sessionId
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
 
-        Integer participantCount = null;
-        if (body != null && body.get("participantCount") instanceof Number n) {
-            participantCount = n.intValue();
-        }
-        String comment = body != null ? (String) body.get("comment") : null;
+        Integer participantCount = body != null ? body.participantCount() : null;
+        String comment = body != null ? body.comment() : null;
 
         updateBookingFeedbackUseCase.updateFeedback(id, participantCount, comment, currentUser.getId());
         return Response.ok(new EmptyResponseDTO()).build();
