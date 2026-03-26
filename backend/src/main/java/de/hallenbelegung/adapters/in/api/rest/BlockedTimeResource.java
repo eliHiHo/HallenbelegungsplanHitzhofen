@@ -1,9 +1,10 @@
-
 package de.hallenbelegung.adapters.in.api.rest;
 
 import de.hallenbelegung.adapters.in.api.dto.BlockedTimeDTO;
 import de.hallenbelegung.adapters.in.api.dto.EmptyResponseDTO;
 import de.hallenbelegung.adapters.in.api.mapper.BlockedTimeApiMapper;
+import de.hallenbelegung.application.domain.exception.UnauthorizedException;
+import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.CreateBlockedTimeUseCase;
 import de.hallenbelegung.application.domain.port.in.DeleteBlockedTimeUseCase;
@@ -71,6 +72,20 @@ public class BlockedTimeResource {
             @CookieParam(SESSION_COOKIE_NAME) String sessionId
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
+
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+        if (request.hallId() == null) {
+            throw new ValidationException("hallId is required");
+        }
+        if (request.startDateTime() == null) {
+            throw new ValidationException("startDateTime is required");
+        }
+        if (request.endDateTime() == null) {
+            throw new ValidationException("endDateTime is required");
+        }
+
         createBlockedTimeUseCase.create(
                 request.hallId(),
                 request.reason(),
@@ -96,7 +111,7 @@ public class BlockedTimeResource {
 
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
-            throw new IllegalArgumentException("Missing session cookie");
+            throw new UnauthorizedException("Missing session cookie");
         }
         return sessionId;
     }

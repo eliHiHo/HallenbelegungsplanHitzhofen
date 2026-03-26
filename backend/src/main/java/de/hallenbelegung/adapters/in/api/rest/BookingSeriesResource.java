@@ -3,6 +3,7 @@ package de.hallenbelegung.adapters.in.api.rest;
 import de.hallenbelegung.adapters.in.api.dto.BookingSeriesDTO;
 import de.hallenbelegung.adapters.in.api.dto.EmptyResponseDTO;
 import de.hallenbelegung.adapters.in.api.mapper.BookingSeriesApiMapper;
+import de.hallenbelegung.application.domain.exception.UnauthorizedException;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.CancelBookingSeriesUseCase;
 import de.hallenbelegung.application.domain.port.in.GetBookingSeriesUseCase;
@@ -73,7 +74,7 @@ public class BookingSeriesResource {
 
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
-            throw new IllegalArgumentException("Missing session cookie");
+            throw new UnauthorizedException("Missing session cookie");
         }
         return sessionId;
     }

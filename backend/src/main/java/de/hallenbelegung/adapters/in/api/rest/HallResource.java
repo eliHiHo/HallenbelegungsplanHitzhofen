@@ -2,6 +2,7 @@ package de.hallenbelegung.adapters.in.api.rest;
 
 import de.hallenbelegung.adapters.in.api.dto.HallDTO;
 import de.hallenbelegung.adapters.in.api.mapper.HallApiMapper;
+import de.hallenbelegung.application.domain.exception.UnauthorizedException;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.GetCurrentUserUseCase;
 import de.hallenbelegung.application.domain.port.in.GetHallUseCase;
@@ -81,7 +82,7 @@ public class HallResource {
 
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
-            throw new IllegalArgumentException("Missing session cookie");
+            throw new UnauthorizedException("Missing session cookie");
         }
         return sessionId;
     }

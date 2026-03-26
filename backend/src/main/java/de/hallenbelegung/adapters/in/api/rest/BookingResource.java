@@ -5,6 +5,8 @@ import de.hallenbelegung.adapters.in.api.dto.BookingRequestDTO;
 import de.hallenbelegung.adapters.in.api.dto.BookingFeedbackDTO;
 import de.hallenbelegung.adapters.in.api.dto.EmptyResponseDTO;
 import de.hallenbelegung.adapters.in.api.mapper.BookingApiMapper;
+import de.hallenbelegung.application.domain.exception.UnauthorizedException;
+import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.CancelBookingUseCase;
 import de.hallenbelegung.application.domain.port.in.GetBookingUseCase;
@@ -79,6 +81,20 @@ public class BookingResource {
             @CookieParam(SESSION_COOKIE_NAME) String sessionId
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
+
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+        if (request.hallId() == null) {
+            throw new ValidationException("hallId is required");
+        }
+        if (request.startDateTime() == null) {
+            throw new ValidationException("startDateTime is required");
+        }
+        if (request.endDateTime() == null) {
+            throw new ValidationException("endDateTime is required");
+        }
+
         updateBookingUseCase.update(
                 currentUser.getId(),
                 id,
@@ -121,8 +137,12 @@ public class BookingResource {
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
 
-        Integer participantCount = body != null ? body.participantCount() : null;
-        String comment = body != null ? body.comment() : null;
+        if (body == null) {
+            throw new ValidationException("Request body is required");
+        }
+
+        Integer participantCount = body.participantCount();
+        String comment = body.comment();
 
         updateBookingFeedbackUseCase.updateFeedback(id, participantCount, comment, currentUser.getId());
         return Response.ok(new EmptyResponseDTO()).build();
@@ -138,7 +158,7 @@ public class BookingResource {
 
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
-            throw new IllegalArgumentException("Missing session cookie");
+            throw new UnauthorizedException("Missing session cookie");
         }
         return sessionId;
     }

@@ -8,6 +8,8 @@ import de.hallenbelegung.adapters.in.api.dto.ResetPasswordRequestDTO;
 import de.hallenbelegung.adapters.in.api.dto.UserDTO;
 import de.hallenbelegung.adapters.in.api.mapper.AuthApiMapper;
 import de.hallenbelegung.adapters.in.api.mapper.UserApiMapper;
+import de.hallenbelegung.application.domain.exception.UnauthorizedException;
+import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.GetCurrentUserUseCase;
 import de.hallenbelegung.application.domain.port.in.LoginUseCase;
@@ -63,6 +65,16 @@ public class AuthResource {
     @POST
     @Path("/login")
     public Response login(LoginRequestDTO request) {
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+        if (request.email() == null || request.email().isBlank()) {
+            throw new ValidationException("email is required");
+        }
+        if (request.password() == null || request.password().isBlank()) {
+            throw new ValidationException("password is required");
+        }
+
         AuthSessionView sessionView = loginUseCase.login(request.email(), request.password());
         LoginResponseDTO responseDto = authApiMapper.toLoginResponse(sessionView);
 
@@ -94,6 +106,12 @@ public class AuthResource {
     @POST
     @Path("/forgot-password")
     public Response forgotPassword(ForgotPasswordRequestDTO request) {
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+        if (request.email() == null || request.email().isBlank()) {
+            throw new ValidationException("email is required");
+        }
         requestPasswordResetUseCase.requestPasswordReset(request.email());
         return Response.ok(new EmptyResponseDTO()).build();
     }
@@ -101,13 +119,22 @@ public class AuthResource {
     @POST
     @Path("/reset-password")
     public Response resetPassword(ResetPasswordRequestDTO request) {
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+        if (request.token() == null || request.token().isBlank()) {
+            throw new ValidationException("token is required");
+        }
+        if (request.newPassword() == null || request.newPassword().isBlank()) {
+            throw new ValidationException("newPassword is required");
+        }
         resetPasswordUseCase.resetPassword(request.token(), request.newPassword());
         return Response.ok(new EmptyResponseDTO()).build();
     }
 
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
-            throw new IllegalArgumentException("Missing session cookie");
+            throw new UnauthorizedException("Missing session cookie");
         }
         return sessionId;
     }

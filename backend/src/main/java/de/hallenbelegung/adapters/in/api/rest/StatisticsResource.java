@@ -5,6 +5,7 @@ import de.hallenbelegung.adapters.in.api.dto.SeriesOccurrenceDTO;
 import de.hallenbelegung.adapters.in.api.dto.SeriesStatisticsDTO;
 import de.hallenbelegung.adapters.in.api.dto.SeriesStatisticsDetailDTO;
 import de.hallenbelegung.adapters.in.api.dto.SeriesUsageDTO;
+import de.hallenbelegung.application.domain.exception.UnauthorizedException;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.GetCurrentUserUseCase;
 import de.hallenbelegung.application.domain.port.in.GetHallStatisticsUseCase;
@@ -211,8 +212,9 @@ public class StatisticsResource {
 
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
-            throw new IllegalArgumentException("Missing session cookie");
+            throw new UnauthorizedException("Missing session cookie");
         }
         return sessionId;
     }
 }
+

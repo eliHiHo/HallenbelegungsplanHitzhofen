@@ -4,6 +4,8 @@ import de.hallenbelegung.adapters.in.api.dto.BookingRequestDTO;
 import de.hallenbelegung.adapters.in.api.dto.EmptyResponseDTO;
 import de.hallenbelegung.adapters.in.api.dto.RejectionDTO;
 import de.hallenbelegung.adapters.in.api.mapper.BookingRequestApiMapper;
+import de.hallenbelegung.application.domain.exception.UnauthorizedException;
+import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.ApproveBookingRequestUseCase;
 import de.hallenbelegung.application.domain.port.in.CreateBookingRequestUseCase;
@@ -102,6 +104,20 @@ public class BookingRequestResource {
             @CookieParam(SESSION_COOKIE_NAME) String sessionId
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
+
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+        if (request.hallId() == null) {
+            throw new ValidationException("hallId is required");
+        }
+        if (request.startDateTime() == null) {
+            throw new ValidationException("startDateTime is required");
+        }
+        if (request.endDateTime() == null) {
+            throw new ValidationException("endDateTime is required");
+        }
+
         UUID created = createBookingRequestUseCase.create(
                 currentUser.getId(),
                 request.hallId(),
@@ -135,14 +151,20 @@ public class BookingRequestResource {
             @CookieParam(SESSION_COOKIE_NAME) String sessionId
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
-        String reason = body != null ? body.reason() : null;
+        if (body == null) {
+            throw new ValidationException("Request body is required");
+        }
+        String reason = body.reason();
+        if (reason == null || reason.isBlank()) {
+            throw new ValidationException("reason is required");
+        }
         rejectBookingRequestUseCase.reject(currentUser.getId(), id, reason);
         return Response.ok(new EmptyResponseDTO()).build();
     }
 
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
-            throw new IllegalArgumentException("Missing session cookie");
+            throw new UnauthorizedException("Missing session cookie");
         }
         return sessionId;
     }

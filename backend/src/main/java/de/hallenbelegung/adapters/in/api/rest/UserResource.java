@@ -4,6 +4,8 @@ import de.hallenbelegung.adapters.in.api.dto.CreateUserDTO;
 import de.hallenbelegung.adapters.in.api.dto.EmptyResponseDTO;
 import de.hallenbelegung.adapters.in.api.dto.UserDTO;
 import de.hallenbelegung.adapters.in.api.mapper.UserApiMapper;
+import de.hallenbelegung.application.domain.exception.UnauthorizedException;
+import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.Role;
 import de.hallenbelegung.application.domain.model.User;
 import de.hallenbelegung.application.domain.port.in.CreateUserUseCase;
@@ -87,14 +89,26 @@ public class UserResource {
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
 
-        Role role = dto != null && dto.role() != null ? Role.valueOf(dto.role()) : null;
+        if (dto == null) {
+            throw new ValidationException("Request body is required");
+        }
+
+        if (dto.email() == null || dto.email().isBlank()) {
+            throw new ValidationException("Email is required");
+        }
+
+        if (dto.password() == null || dto.password().isBlank()) {
+            throw new ValidationException("Password is required");
+        }
+
+        Role role = parseRole(dto.role());
 
         UUID created = createUserUseCase.createUser(
                 currentUser.getId(),
-                dto != null ? dto.firstName() : null,
-                dto != null ? dto.lastName() : null,
-                dto != null ? dto.email() : null,
-                dto != null ? dto.password() : null,
+                dto.firstName(),
+                dto.lastName(),
+                dto.email(),
+                dto.password(),
                 role
         );
 
@@ -118,7 +132,11 @@ public class UserResource {
     ) {
         User currentUser = getCurrentUserUseCase.getCurrentUser(requireSessionId(sessionId));
 
-        Role role = request.role() != null ? Role.valueOf(request.role()) : null;
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+
+        Role role = request.role() != null ? parseRole(request.role()) : null;
 
         updateUserUseCase.updateUser(
                 currentUser.getId(),
@@ -133,9 +151,24 @@ public class UserResource {
         return Response.ok(new EmptyResponseDTO()).build();
     }
 
+    private Role parseRole(String roleStr) {
+        if (roleStr == null) {
+            return null; // role is optional
+        }
+        if (roleStr.isBlank()) {
+            throw new ValidationException("role must not be blank");
+        }
+        try {
+            return Role.valueOf(roleStr);
+        } catch (IllegalArgumentException e) {
+            String allowed = String.join(", ", java.util.Arrays.stream(Role.values()).map(Enum::name).toList());
+            throw new ValidationException("Invalid role: " + roleStr + ". Allowed values: [" + allowed + "]");
+        }
+    }
+
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
-            throw new IllegalArgumentException("Missing session cookie");
+            throw new UnauthorizedException("Missing session cookie");
         }
         return sessionId;
     }
