@@ -142,7 +142,6 @@ public class AuthResource {
         return sessionId;
     }
 
-    // NACHHER:
     private NewCookie createSessionCookie(String sessionId) {
         return new NewCookie.Builder(SESSION_COOKIE_NAME)
                 .value(sessionId)
