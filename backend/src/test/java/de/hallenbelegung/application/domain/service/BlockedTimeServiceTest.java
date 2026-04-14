@@ -168,7 +168,7 @@ public class BlockedTimeServiceTest {
                 null,
                 hall,
                 owner,
-                (BookingSeries) null,
+                null,
                 now,
                 now,
                 owner,
@@ -206,6 +206,26 @@ public class BlockedTimeServiceTest {
         Hall hall = createPartHallA();
         LocalDateTime start = LocalDateTime.of(2026, 4, 20, 10, 0);
         LocalDateTime end = LocalDateTime.of(2026, 4, 20, 11, 0);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+        when(bookingRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.save(any(BlockedTime.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertDoesNotThrow(() -> service.create(hall.getId(), "Wartung", start, end, admin.getId()));
+
+        verify(blockedTimeRepository).save(any(BlockedTime.class));
+    }
+
+    @Test
+    void create_success_for_admin_single_day_on_exact_opening_boundaries() {
+        User admin = createAdmin();
+        Hall hall = createPartHallA();
+        LocalDateTime start = LocalDateTime.of(2026, 4, 20, 8, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 20, 22, 0);
 
         when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
         when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
@@ -280,6 +300,8 @@ public class BlockedTimeServiceTest {
         );
 
         assertEquals("User not allowed to create blocked times", exception.getMessage());
+        verify(hallRepository, never()).findById(any());
+        verify(blockedTimeRepository, never()).save(any());
     }
 
     @Test
@@ -302,6 +324,8 @@ public class BlockedTimeServiceTest {
         );
 
         assertEquals("Admin user inactive", exception.getMessage());
+        verify(hallRepository, never()).findById(any());
+        verify(blockedTimeRepository, never()).save(any());
     }
 
     @Test
@@ -515,6 +539,29 @@ public class BlockedTimeServiceTest {
         );
 
         assertEquals("Conflict with existing booking", exception.getMessage());
+        verify(blockedTimeRepository, never()).save(any());
+    }
+
+    @Test
+    void create_prioritizes_booking_conflict_over_blocked_time_conflict() {
+        User admin = createAdmin();
+        User owner = createRepresentative();
+        Hall hall = createPartHallA();
+        LocalDateTime start = LocalDateTime.of(2026, 4, 20, 10, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 20, 11, 0);
+        Booking booking = createBooking(owner, hall, start, end);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+        when(bookingRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of(booking));
+
+        BookingConflictException exception = assertThrows(
+                BookingConflictException.class,
+                () -> service.create(hall.getId(), "Wartung", start, end, admin.getId())
+        );
+
+        assertEquals("Conflict with existing booking", exception.getMessage());
+        verify(blockedTimeRepository, never()).findByHallIdAndTimeRange(any(UUID.class), any(LocalDateTime.class), any(LocalDateTime.class));
     }
 
     @Test
@@ -603,6 +650,7 @@ public class BlockedTimeServiceTest {
         );
 
         assertEquals("Conflict with existing blocked time", exception.getMessage());
+        verify(blockedTimeRepository, never()).save(any());
     }
 
     @Test
@@ -627,6 +675,7 @@ public class BlockedTimeServiceTest {
         );
 
         assertEquals("Conflict with full hall blocked time", exception.getMessage());
+        verify(blockedTimeRepository, never()).save(any());
     }
 
     @Test
@@ -649,6 +698,7 @@ public class BlockedTimeServiceTest {
         );
 
         assertEquals("Conflict with existing blocked time", exception.getMessage());
+        verify(blockedTimeRepository, never()).save(any());
     }
 
     @Test
@@ -846,6 +896,7 @@ public class BlockedTimeServiceTest {
         );
 
         assertEquals("Blocked time not found", exception.getMessage());
+        verify(blockedTimeRepository, never()).deleteById(any());
     }
 
     @Test

@@ -370,7 +370,7 @@ public class StatisticsServiceTest {
         assertEquals(3, stats.getTotalBookings());
         assertEquals(1, stats.getCancelledBookings());
         assertEquals(20, stats.getTotalParticipants());
-        assertEquals(13.88888888888889, stats.getUtilizationPercent(), 0.0000001);
+        assertEquals((150.0 / 25200.0) * 100.0, stats.getUtilizationPercent(), 0.0000001);
     }
 
     @Test
@@ -418,6 +418,156 @@ public class StatisticsServiceTest {
         assertEquals(series1.getId(), topSeries.get(0).getBookingSeriesId());
         assertEquals("Volleyball", topSeries.get(0).getTitle());
         assertEquals(2L, topSeries.get(0).getBookingCount());
+    }
+
+    @Test
+    void getHallStatistics_limits_top_series_to_five_and_ignores_cancelled_bookings() {
+        User admin = createAdmin();
+        User owner = createRepresentative();
+        Hall hallA = createHallA();
+
+        BookingSeries series1 = createSeries(owner, hallA, "Serie 1");
+        BookingSeries series2 = createSeries(owner, hallA, "Serie 2");
+        BookingSeries series3 = createSeries(owner, hallA, "Serie 3");
+        BookingSeries series4 = createSeries(owner, hallA, "Serie 4");
+        BookingSeries series5 = createSeries(owner, hallA, "Serie 5");
+        BookingSeries series6 = createSeries(owner, hallA, "Serie 6");
+
+        LocalDateTime start = LocalDateTime.of(2026, 4, 7, 18, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 7, 19, 0);
+
+        Booking booking1 = createBooking(owner, hallA, series1, start, end, 10, true, false);
+        Booking cancelledBooking1 = createBooking(owner, hallA, series1, start.plusDays(7), end.plusDays(7), 99, true, true);
+        Booking booking2 = createBooking(owner, hallA, series2, start.plusDays(1), end.plusDays(1), 11, true, false);
+        Booking booking3 = createBooking(owner, hallA, series3, start.plusDays(2), end.plusDays(2), 12, true, false);
+        Booking booking4 = createBooking(owner, hallA, series4, start.plusDays(3), end.plusDays(3), 13, true, false);
+        Booking booking5 = createBooking(owner, hallA, series5, start.plusDays(4), end.plusDays(4), 14, true, false);
+        Booking booking6 = createBooking(owner, hallA, series6, start.plusDays(5), end.plusDays(5), 15, true, false);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(hallRepository.findAllActive()).thenReturn(List.of(hallA));
+        when(bookingRepository.findByHallIdAndTimeRange(eq(hallA.getId()), any(), any()))
+                .thenReturn(List.of(
+                        booking1,
+                        cancelledBooking1,
+                        booking2,
+                        booking3,
+                        booking4,
+                        booking5,
+                        booking6
+                ));
+
+        List<HallStatisticsView> result = service.getHallStatistics(
+                admin.getId(),
+                LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 4, 30)
+        );
+
+        List<SeriesUsageView> topSeries = result.get(0).getTopSeries();
+
+        assertEquals(5, topSeries.size());
+    }
+
+    @Test
+    void getHallStatistics_ignores_cancelled_bookings_in_series_usage() {
+        User admin = createAdmin();
+        User owner = createRepresentative();
+        Hall hallA = createHallA();
+
+        BookingSeries series = createSeries(owner, hallA, "Volleyball");
+
+        Booking activeBooking = createBooking(
+                owner,
+                hallA,
+                series,
+                LocalDateTime.of(2026, 4, 7, 18, 0),
+                LocalDateTime.of(2026, 4, 7, 19, 0),
+                10,
+                true,
+                false
+        );
+        Booking cancelledBooking = createBooking(
+                owner,
+                hallA,
+                series,
+                LocalDateTime.of(2026, 4, 14, 18, 0),
+                LocalDateTime.of(2026, 4, 14, 19, 0),
+                12,
+                true,
+                true
+        );
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(hallRepository.findAllActive()).thenReturn(List.of(hallA));
+        when(bookingRepository.findByHallIdAndTimeRange(eq(hallA.getId()), any(), any()))
+                .thenReturn(List.of(activeBooking, cancelledBooking));
+
+        List<HallStatisticsView> result = service.getHallStatistics(
+                admin.getId(),
+                LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 4, 30)
+        );
+
+        List<SeriesUsageView> topSeries = result.getFirst().getTopSeries();
+
+        assertEquals(1, topSeries.size());
+        assertEquals(series.getId(), topSeries.getFirst().getBookingSeriesId());
+        assertEquals(1L, topSeries.getFirst().getBookingCount());
+    }
+
+    @Test
+    void getSeriesStatisticsDetail_includes_boundary_bookings_in_range() {
+        User owner = createRepresentative();
+        Hall hall = createHallA();
+        BookingSeries series = createSeries(owner, hall, "Volleyball");
+
+        Booking fromBoundary = createBooking(
+                owner,
+                hall,
+                series,
+                LocalDateTime.of(2026, 4, 1, 18, 0),
+                LocalDateTime.of(2026, 4, 1, 19, 0),
+                20,
+                true,
+                false
+        );
+        Booking toBoundary = createBooking(
+                owner,
+                hall,
+                series,
+                LocalDateTime.of(2026, 4, 30, 18, 0),
+                LocalDateTime.of(2026, 4, 30, 19, 0),
+                18,
+                true,
+                false
+        );
+        Booking outsideRange = createBooking(
+                owner,
+                hall,
+                series,
+                LocalDateTime.of(2026, 5, 1, 18, 0),
+                LocalDateTime.of(2026, 5, 1, 19, 0),
+                22,
+                true,
+                false
+        );
+
+        when(userRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
+        when(bookingSeriesRepository.findById(series.getId())).thenReturn(Optional.of(series));
+        when(bookingRepository.findByBookingSeriesId(series.getId()))
+                .thenReturn(List.of(fromBoundary, toBoundary, outsideRange));
+
+        SeriesStatisticsDetailView result = service.getSeriesStatisticsDetail(
+                owner.getId(),
+                series.getId(),
+                LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 4, 30)
+        );
+
+        assertEquals(2, result.getTotalAppointments());
+        assertEquals(2, result.getOccurrences().size());
+        assertEquals(fromBoundary.getId(), result.getOccurrences().get(0).getBookingId());
+        assertEquals(toBoundary.getId(), result.getOccurrences().get(1).getBookingId());
     }
 
     @Test
@@ -691,6 +841,48 @@ public class StatisticsServiceTest {
         assertEquals(1, item.getCancelledAppointments());
         assertEquals(36, item.getTotalParticipants());
         assertEquals(18.0, item.getAverageParticipants(), 0.000001);
+    }
+
+    @Test
+    void getSeriesStatisticsOverview_returns_zero_average_when_no_participant_relevant_bookings() {
+        User representative = createRepresentative();
+        Hall hall = createHallA();
+        BookingSeries series = createSeries(representative, hall, "Volleyball");
+
+        Booking noFeedbackBooking = createBooking(
+                representative,
+                hall,
+                series,
+                LocalDateTime.of(2026, 4, 7, 18, 0),
+                LocalDateTime.of(2026, 4, 7, 19, 0),
+                null,
+                true,
+                false
+        );
+        Booking cancelledBooking = createBooking(
+                representative,
+                hall,
+                series,
+                LocalDateTime.of(2026, 4, 14, 18, 0),
+                LocalDateTime.of(2026, 4, 14, 19, 0),
+                30,
+                false,
+                true
+        );
+
+        when(userRepository.findById(representative.getId())).thenReturn(Optional.of(representative));
+        when(bookingSeriesRepository.findByResponsibleUserId(representative.getId())).thenReturn(List.of(series));
+        when(bookingRepository.findByBookingSeriesId(series.getId())).thenReturn(List.of(noFeedbackBooking, cancelledBooking));
+
+        List<SeriesStatisticsOverviewView> result = service.getSeriesStatisticsOverview(
+                representative.getId(),
+                LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 4, 30)
+        );
+
+        SeriesStatisticsOverviewView item = result.get(0);
+        assertEquals(0, item.getTotalParticipants());
+        assertEquals(0.0, item.getAverageParticipants(), 0.000001);
     }
 
     @Test

@@ -243,6 +243,128 @@ public class BookingRequestServiceTest {
     }
 
     @Test
+    void create_request_rejects_null_start_time() {
+        User user = createRepresentative();
+        Hall hall = createPartHallA();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.create(
+                        user.getId(),
+                        hall.getId(),
+                        "Test",
+                        "desc",
+                        null,
+                        LocalDateTime.of(2026, 4, 20, 11, 0)
+                )
+        );
+
+        assertEquals("Start time and end time are required", exception.getMessage());
+    }
+
+    @Test
+    void create_request_rejects_seconds_and_nanos() {
+        User user = createRepresentative();
+        Hall hall = createPartHallA();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.create(
+                        user.getId(),
+                        hall.getId(),
+                        "Test",
+                        "desc",
+                        LocalDateTime.of(2026, 4, 20, 10, 0, 1),
+                        LocalDateTime.of(2026, 4, 20, 11, 0, 0, 1)
+                )
+        );
+
+        assertEquals("Seconds and nanoseconds are not allowed", exception.getMessage());
+    }
+
+    @Test
+    void create_request_rejects_non_representative_non_admin_user() {
+        User user = spy(createRepresentative());
+        doReturn(false).when(user).isClubRepresentative();
+        doReturn(false).when(user).isAdmin();
+        Hall hall = createPartHallA();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.create(
+                        user.getId(),
+                        hall.getId(),
+                        "Test",
+                        "desc",
+                        LocalDateTime.of(2026, 4, 20, 10, 0),
+                        LocalDateTime.of(2026, 4, 20, 11, 0)
+                )
+        );
+
+        assertEquals("User not allowed to create booking request", exception.getMessage());
+    }
+
+    @Test
+    void create_request_allows_admin_user() {
+        User admin = createAdmin();
+        Hall hall = createPartHallA();
+        LocalDateTime start = LocalDateTime.of(2026, 4, 20, 10, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 20, 11, 0);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+        when(bookingRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.save(any(BookingRequest.class)))
+                .thenAnswer(invocation -> withId(invocation.getArgument(0), UUID.randomUUID()));
+
+        UUID requestId = service.create(admin.getId(), hall.getId(), "Admin Booking", "desc", start, end);
+
+        assertNotNull(requestId);
+        verify(notificationPort).notifyAdminsAboutNewBookingRequest(any(BookingRequest.class));
+    }
+
+    @Test
+    void create_request_accepts_exact_opening_boundaries() {
+        User user = createRepresentative();
+        Hall hall = createPartHallA();
+
+        LocalDateTime start = LocalDateTime.of(2026, 4, 20, 8, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 20, 22, 0);
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+        when(bookingRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.save(any(BookingRequest.class)))
+                .thenAnswer(invocation -> withId(invocation.getArgument(0), UUID.randomUUID()));
+
+        UUID requestId = service.create(
+                user.getId(),
+                hall.getId(),
+                "Boundary Booking",
+                "desc",
+                start,
+                end
+        );
+
+        assertNotNull(requestId);
+        verify(bookingRequestRepository).save(any(BookingRequest.class));
+    }
+
+    @Test
     void create_request_rejects_unknown_user() {
         UUID userId = UUID.randomUUID();
         UUID hallId = UUID.randomUUID();
@@ -488,6 +610,29 @@ public class BookingRequestServiceTest {
         );
 
         assertEquals("Conflict with full hall booking", exception.getMessage());
+    }
+
+    @Test
+    void create_request_ignores_cancelled_full_hall_booking_conflicts() {
+        User user = createRepresentative();
+        Hall requestedHall = createPartHallA();
+        Hall fullHall = createFullHall();
+        LocalDateTime start = LocalDateTime.of(2026, 4, 20, 10, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 20, 11, 0);
+
+        Booking cancelledFullHallBooking = createApprovedBooking(fullHall, user, start, end);
+        cancelledFullHallBooking.cancel(user, "Cancelled");
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(hallRepository.findById(requestedHall.getId())).thenReturn(Optional.of(requestedHall));
+        when(bookingRepository.findByHallIdAndTimeRange(requestedHall.getId(), start, end)).thenReturn(List.of());
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of(cancelledFullHallBooking));
+        when(blockedTimeRepository.findByHallIdAndTimeRange(requestedHall.getId(), start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.save(any(BookingRequest.class)))
+                .thenAnswer(invocation -> withId(invocation.getArgument(0), UUID.randomUUID()));
+
+        assertDoesNotThrow(() -> service.create(user.getId(), requestedHall.getId(), "Test", "desc", start, end));
     }
 
     @Test

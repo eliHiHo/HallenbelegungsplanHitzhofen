@@ -44,7 +44,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -311,6 +314,36 @@ public class BookingSeriesRequestServiceTest {
         );
 
         assertEquals("User inactive", ex.getMessage());
+    }
+
+    @Test
+    void create_rejects_user_without_required_role_and_has_no_side_effects() {
+        User plainUser = spy(user(Role.CLUB_REPRESENTATIVE, true, "plain@example.com"));
+        doReturn(false).when(plainUser).isClubRepresentative();
+        doReturn(false).when(plainUser).isAdmin();
+        Hall hall = hall(HallType.PART_SMALL, true, "Halle A");
+
+        when(userRepository.findById(plainUser.getId())).thenReturn(Optional.of(plainUser));
+
+        ForbiddenException ex = assertThrows(
+                ForbiddenException.class,
+                () -> service.create(
+                        plainUser.getId(),
+                        hall.getId(),
+                        "Serie",
+                        "desc",
+                        DayOfWeek.MONDAY,
+                        LocalTime.of(10, 0),
+                        LocalTime.of(11, 0),
+                        LocalDate.of(2026, 4, 20),
+                        LocalDate.of(2026, 5, 20)
+                )
+        );
+
+        assertEquals("User not allowed to create booking series request", ex.getMessage());
+        verify(hallRepository, never()).findById(any(UUID.class));
+        verify(bookingSeriesRequestRepository, never()).save(any(BookingSeriesRequest.class));
+        verify(notificationPort, never()).notifyAdminsAboutNewBookingSeriesRequest(any(BookingSeriesRequest.class));
     }
 
     @Test
@@ -640,6 +673,25 @@ public class BookingSeriesRequestServiceTest {
     }
 
     @Test
+    void approve_rejects_unknown_request_and_has_no_side_effects() {
+        User admin = user(Role.ADMIN, true, "admin@example.com");
+        UUID unknownRequestId = UUID.randomUUID();
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingSeriesRequestRepository.findById(unknownRequestId)).thenReturn(Optional.empty());
+
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
+                () -> service.approve(admin.getId(), unknownRequestId)
+        );
+
+        assertEquals("Booking series request not found", ex.getMessage());
+        verify(bookingSeriesRepository, never()).save(any(BookingSeries.class));
+        verify(bookingRepository, never()).save(any(Booking.class));
+        verify(notificationPort, never()).notifyRequesterAboutBookingSeriesRequestApproved(any(BookingSeriesRequest.class), any(BookingSeries.class));
+    }
+
+    @Test
     void approve_rejects_non_pending_request() {
         User admin = user(Role.ADMIN, true, "admin@example.com");
         Hall hall = hall(HallType.PART_SMALL, true, "Halle A");
@@ -714,6 +766,10 @@ public class BookingSeriesRequestServiceTest {
         );
 
         assertEquals("No conflict-free appointments available for this series request", ex.getMessage());
+        verify(bookingSeriesRepository, never()).save(any(BookingSeries.class));
+        verify(bookingRepository, never()).save(any(Booking.class));
+        verify(bookingSeriesRequestRepository, never()).save(any(BookingSeriesRequest.class));
+        verify(notificationPort, never()).notifyRequesterAboutBookingSeriesRequestApproved(any(BookingSeriesRequest.class), any(BookingSeries.class));
     }
 
     @Test
@@ -798,6 +854,42 @@ public class BookingSeriesRequestServiceTest {
         assertEquals(admin.getId(), request.getProcessedBy().getId());
 
         verify(notificationPort).notifyRequesterAboutBookingSeriesRequestRejected(request, "Termin kollidiert mit Veranstaltung");
+    }
+
+    @Test
+    void reject_rejects_non_admin_and_has_no_side_effects() {
+        User representative = user(Role.CLUB_REPRESENTATIVE, true, "rep@example.com");
+        UUID requestId = UUID.randomUUID();
+
+        when(userRepository.findById(representative.getId())).thenReturn(Optional.of(representative));
+
+        ForbiddenException ex = assertThrows(
+                ForbiddenException.class,
+                () -> service.reject(representative.getId(), requestId, "Nope")
+        );
+
+        assertEquals("User not allowed to reject booking series requests", ex.getMessage());
+        verify(bookingSeriesRequestRepository, never()).findById(any(UUID.class));
+        verify(bookingSeriesRequestRepository, never()).save(any(BookingSeriesRequest.class));
+        verify(notificationPort, never()).notifyRequesterAboutBookingSeriesRequestRejected(any(BookingSeriesRequest.class), any(String.class));
+    }
+
+    @Test
+    void reject_rejects_unknown_request_and_has_no_side_effects() {
+        User admin = user(Role.ADMIN, true, "admin@example.com");
+        UUID requestId = UUID.randomUUID();
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingSeriesRequestRepository.findById(requestId)).thenReturn(Optional.empty());
+
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
+                () -> service.reject(admin.getId(), requestId, "Nope")
+        );
+
+        assertEquals("Booking series request not found", ex.getMessage());
+        verify(bookingSeriesRequestRepository, never()).save(any(BookingSeriesRequest.class));
+        verify(notificationPort, never()).notifyRequesterAboutBookingSeriesRequestRejected(any(BookingSeriesRequest.class), any(String.class));
     }
 
     @Test

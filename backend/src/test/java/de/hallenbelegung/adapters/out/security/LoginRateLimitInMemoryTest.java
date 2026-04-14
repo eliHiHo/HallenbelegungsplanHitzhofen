@@ -1,6 +1,5 @@
-package de.hallenbelegung.application.domain.service;
+package de.hallenbelegung.adapters.out.security;
 
-import de.hallenbelegung.adapters.out.security.LoginRateLimitInMemory;
 import de.hallenbelegung.application.domain.exception.RateLimitException;
 import org.junit.jupiter.api.Test;
 

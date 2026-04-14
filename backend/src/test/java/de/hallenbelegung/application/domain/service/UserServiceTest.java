@@ -17,6 +17,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.Mockito.*;
 
 public class UserServiceTest {
@@ -283,7 +284,17 @@ public class UserServiceTest {
 
         assertEquals(savedId, result);
         verify(passwordHashingPort).hash("secret123");
-        verify(userRepository).save(any(User.class));
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+
+        User savedUser = captor.getValue();
+        assertEquals("New", savedUser.getFirstName());
+        assertEquals("User", savedUser.getLastName());
+        assertEquals("new@example.com", savedUser.getEmail());
+        assertEquals("hashed:secret123", savedUser.getPasswordHash());
+        assertEquals(Role.CLUB_REPRESENTATIVE, savedUser.getRole());
+        assertTrue(savedUser.isActive());
     }
 
     @Test
@@ -320,6 +331,31 @@ public class UserServiceTest {
 
         assertEquals(savedId, result);
         verify(userRepository).findByEmail("new@example.com");
+    }
+
+    @Test
+    void createUser_rejects_duplicate_email_after_normalization() {
+        User admin = createAdmin();
+        User existing = createRepresentative();
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(userRepository.findByEmail("existing@example.com")).thenReturn(Optional.of(existing));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.createUser(
+                        admin.getId(),
+                        "New",
+                        "User",
+                        "  EXISTING@EXAMPLE.COM  ",
+                        "secret123",
+                        Role.CLUB_REPRESENTATIVE
+                )
+        );
+
+        assertEquals("Email already in use", exception.getMessage());
+        verify(passwordHashingPort, never()).hash(any());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -362,6 +398,8 @@ public class UserServiceTest {
         );
 
         assertEquals("User not allowed to manage users", exception.getMessage());
+        verify(passwordHashingPort, never()).hash(any());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -404,6 +442,8 @@ public class UserServiceTest {
         );
 
         assertEquals("First name is required", exception.getMessage());
+        verify(passwordHashingPort, never()).hash(any());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -667,7 +707,9 @@ public class UserServiceTest {
         assertEquals(Role.ADMIN, target.getRole());
         assertFalse(target.isActive());
 
-        verify(userRepository).save(target);
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertEquals(target, captor.getValue());
     }
 
     @Test
@@ -771,6 +813,7 @@ public class UserServiceTest {
         );
 
         assertEquals("User not allowed to manage users", exception.getMessage());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -842,6 +885,7 @@ public class UserServiceTest {
         );
 
         assertEquals("First name is required", exception.getMessage());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -1014,6 +1058,59 @@ public class UserServiceTest {
         );
 
         assertEquals("Email already in use", exception.getMessage());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUser_rejects_duplicate_email_after_normalization() {
+        User admin = createAdmin();
+        User target = createRepresentative();
+        User otherUser = createOtherRepresentative();
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        when(userRepository.findByEmail("other@example.com")).thenReturn(Optional.of(otherUser));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.updateUser(
+                        admin.getId(),
+                        target.getId(),
+                        "Updated",
+                        "Name",
+                        "  OTHER@EXAMPLE.COM  ",
+                        Role.ADMIN,
+                        true
+                )
+        );
+
+        assertEquals("Email already in use", exception.getMessage());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUser_rejects_admin_changing_own_role_away_from_admin() {
+        User admin = createAdmin();
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.updateUser(
+                        admin.getId(),
+                        admin.getId(),
+                        admin.getFirstName(),
+                        admin.getLastName(),
+                        admin.getEmail(),
+                        Role.CLUB_REPRESENTATIVE,
+                        true
+                )
+        );
+
+        assertEquals("Admin cannot change own role", exception.getMessage());
+        assertEquals(Role.ADMIN, admin.getRole());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -1037,7 +1134,7 @@ public class UserServiceTest {
         ));
 
         assertEquals("Updated", target.getFirstName());
-        assertEquals(target.getEmail(), target.getEmail());
+        assertEquals("rep@example.com", target.getEmail());
     }
 
     @Test

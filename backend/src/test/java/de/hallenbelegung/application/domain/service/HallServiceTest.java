@@ -135,9 +135,11 @@ public class HallServiceTest {
         List<Hall> result = service.getAllActive();
 
         assertEquals(3, result.size());
-        assertEquals(hallA.getId(), result.get(0).getId());
-        assertEquals(hallB.getId(), result.get(1).getId());
-        assertEquals(fullHall.getId(), result.get(2).getId());
+        assertTrue(result.get(0).getId().compareTo(result.get(1).getId()) <= 0);
+        assertTrue(result.get(1).getId().compareTo(result.get(2).getId()) <= 0);
+        assertTrue(result.stream().anyMatch(h -> h.getId().equals(hallA.getId())));
+        assertTrue(result.stream().anyMatch(h -> h.getId().equals(hallB.getId())));
+        assertTrue(result.stream().anyMatch(h -> h.getId().equals(fullHall.getId())));
     }
 
     @Test
@@ -203,8 +205,9 @@ public class HallServiceTest {
         List<Hall> result = service.getAllIncludingInactive(admin.getId());
 
         assertEquals(2, result.size());
-        assertEquals(hallA.getId(), result.get(0).getId());
-        assertEquals(inactiveHall.getId(), result.get(1).getId());
+        assertTrue(result.get(0).getId().compareTo(result.get(1).getId()) <= 0);
+        assertTrue(result.stream().anyMatch(h -> h.getId().equals(hallA.getId())));
+        assertTrue(result.stream().anyMatch(h -> h.getId().equals(inactiveHall.getId())));
     }
 
     @Test
@@ -219,6 +222,7 @@ public class HallServiceTest {
         );
 
         assertEquals("User not found", exception.getMessage());
+        verify(hallRepository, never()).findAll();
     }
 
     @Test
@@ -232,7 +236,8 @@ public class HallServiceTest {
                 () -> service.getAllIncludingInactive(representative.getId())
         );
 
-        assertEquals("User not allowed to view inactive halls", exception.getMessage());
+        assertEquals("User not allowed to view all halls", exception.getMessage());
+        verify(hallRepository, never()).findAll();
     }
 
     @Test
@@ -247,6 +252,7 @@ public class HallServiceTest {
         );
 
         assertEquals("User inactive", exception.getMessage());
+        verify(hallRepository, never()).findAll();
     }
 
     @Test
@@ -304,7 +310,8 @@ public class HallServiceTest {
                 () -> service.getByIdIncludingInactive(representative.getId(), hall.getId())
         );
 
-        assertEquals("User not allowed to view inactive halls", exception.getMessage());
+        assertEquals("User not allowed to view this hall", exception.getMessage());
+        verify(hallRepository, never()).findById(hall.getId());
     }
 
     @Test
@@ -321,6 +328,52 @@ public class HallServiceTest {
         );
 
         assertEquals("User inactive", exception.getMessage());
+        verify(hallRepository, never()).findById(hall.getId());
+    }
+
+    @Test
+    void getAllActive_sorts_by_id_even_when_repository_order_is_random() {
+        Hall hall1 = new Hall(
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                "Halle 2",
+                "desc",
+                true,
+                Instant.now(),
+                Instant.now(),
+                HallType.PART_SMALL
+        );
+        Hall hall2 = new Hall(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                "Halle 1",
+                "desc",
+                true,
+                Instant.now(),
+                Instant.now(),
+                HallType.PART_LARGE
+        );
+
+        when(hallRepository.findAllActive()).thenReturn(List.of(hall1, hall2));
+
+        List<Hall> result = service.getAllActive();
+
+        assertEquals(hall2.getId(), result.get(0).getId());
+        assertEquals(hall1.getId(), result.get(1).getId());
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void getById_rejects_inactive_hall_without_touching_user_repository() {
+        Hall inactiveHall = createInactiveHall();
+
+        when(hallRepository.findById(inactiveHall.getId())).thenReturn(Optional.of(inactiveHall));
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.getById(inactiveHall.getId())
+        );
+
+        assertEquals("Hall not found", exception.getMessage());
+        verifyNoInteractions(userRepository);
     }
 
     @Test

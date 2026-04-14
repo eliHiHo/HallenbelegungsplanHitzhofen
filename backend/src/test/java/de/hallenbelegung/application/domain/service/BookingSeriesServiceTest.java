@@ -414,11 +414,22 @@ public class BookingSeriesServiceTest {
         assertTrue(series.isCancelled());
         assertEquals("Sommerpause", series.getCancelReason());
         assertEquals(owner.getId(), series.getCancelledBy().getId());
+        assertEquals(owner.getId(), series.getUpdatedBy().getId());
+        assertNotNull(series.getCancelledAt());
+        assertNotNull(series.getUpdatedAt());
 
         assertTrue(booking1.isCancelled());
         assertTrue(booking2.isCancelled());
         assertEquals("Sommerpause", booking1.getCancelReason());
         assertEquals("Sommerpause", booking2.getCancelReason());
+        assertEquals(owner.getId(), booking1.getCancelledBy().getId());
+        assertEquals(owner.getId(), booking2.getCancelledBy().getId());
+        assertEquals(owner.getId(), booking1.getUpdatedBy().getId());
+        assertEquals(owner.getId(), booking2.getUpdatedBy().getId());
+        assertNotNull(booking1.getCancelledAt());
+        assertNotNull(booking2.getCancelledAt());
+        assertNotNull(booking1.getUpdatedAt());
+        assertNotNull(booking2.getUpdatedAt());
 
         verify(bookingSeriesRepository).save(series);
         verify(bookingRepository).save(booking1);
@@ -450,7 +461,15 @@ public class BookingSeriesServiceTest {
         service.cancelSeries(admin.getId(), series.getId(), "Gemeindeveranstaltung");
 
         assertTrue(series.isCancelled());
+        assertEquals("Gemeindeveranstaltung", series.getCancelReason());
+        assertEquals(admin.getId(), series.getCancelledBy().getId());
+        assertEquals(admin.getId(), series.getUpdatedBy().getId());
+        assertNotNull(series.getCancelledAt());
         assertTrue(booking1.isCancelled());
+        assertEquals(admin.getId(), booking1.getCancelledBy().getId());
+        assertEquals(admin.getId(), booking1.getUpdatedBy().getId());
+        assertEquals("Gemeindeveranstaltung", booking1.getCancelReason());
+        assertNotNull(booking1.getCancelledAt());
 
         verify(notificationPort)
                 .notifyRequesterAboutBookingSeriesCancelledByAdmin(series, "Gemeindeveranstaltung");
@@ -551,6 +570,9 @@ public class BookingSeriesServiceTest {
         );
 
         assertEquals("Booking series is already cancelled", exception.getMessage());
+        verify(bookingRepository, never()).findByBookingSeriesId(any());
+        verify(bookingSeriesRepository, never()).save(any());
+        verify(notificationPort, never()).notifyRequesterAboutBookingSeriesCancelledByAdmin(any(), any());
     }
 
     @Test
@@ -591,6 +613,28 @@ public class BookingSeriesServiceTest {
     }
 
     @Test
+    void cancelSeries_rejects_other_user_without_loading_bookings_or_saving() {
+        User owner = createRepresentative();
+        User other = createOtherRepresentative();
+        Hall hall = createHall();
+        BookingSeries series = createSeries(owner, hall);
+
+        when(userRepository.findById(other.getId())).thenReturn(Optional.of(other));
+        when(bookingSeriesRepository.findById(series.getId())).thenReturn(Optional.of(series));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.cancelSeries(other.getId(), series.getId(), "Nope")
+        );
+
+        assertEquals("User not allowed to cancel this booking series", exception.getMessage());
+        verify(bookingRepository, never()).findByBookingSeriesId(any());
+        verify(bookingSeriesRepository, never()).save(any());
+        verify(bookingRepository, never()).save(any());
+        verify(notificationPort, never()).notifyRequesterAboutBookingSeriesCancelledByAdmin(any(), any());
+    }
+
+    @Test
     void cancelSingleOccurrence_success_for_owner() {
         User owner = createRepresentative();
         Hall hall = createHall();
@@ -614,6 +658,9 @@ public class BookingSeriesServiceTest {
         assertTrue(selected.isCancelled());
         assertEquals("Einmaliger Ausfall", selected.getCancelReason());
         assertEquals(owner.getId(), selected.getCancelledBy().getId());
+        assertEquals(owner.getId(), selected.getUpdatedBy().getId());
+        assertNotNull(selected.getCancelledAt());
+        assertNotNull(selected.getUpdatedAt());
 
         verify(bookingRepository).save(selected);
         verify(notificationPort, never()).notifyRequesterAboutBookingCancelledByAdmin(any(), any());
@@ -643,6 +690,9 @@ public class BookingSeriesServiceTest {
 
         assertTrue(selected.isCancelled());
         assertEquals("Sperrung", selected.getCancelReason());
+        assertEquals(admin.getId(), selected.getCancelledBy().getId());
+        assertEquals(admin.getId(), selected.getUpdatedBy().getId());
+        assertNotNull(selected.getCancelledAt());
     }
 
     @Test
@@ -768,6 +818,34 @@ public class BookingSeriesServiceTest {
         );
 
         assertEquals("User not allowed to cancel occurrences of this booking series", exception.getMessage());
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelSingleOccurrence_rejects_other_user_without_loading_booking() {
+        User owner = createRepresentative();
+        User other = createOtherRepresentative();
+        Hall hall = createHall();
+        BookingSeries series = createSeries(owner, hall);
+        Booking selected = createSeriesBooking(
+                owner,
+                hall,
+                series,
+                LocalDateTime.of(2026, 4, 20, 18, 0),
+                LocalDateTime.of(2026, 4, 20, 19, 30)
+        );
+
+        when(userRepository.findById(other.getId())).thenReturn(Optional.of(other));
+        when(bookingSeriesRepository.findById(series.getId())).thenReturn(Optional.of(series));
+        when(bookingRepository.findById(selected.getId())).thenReturn(Optional.of(selected));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.cancelSingleOccurrence(other.getId(), series.getId(), selected.getId(), "Nope")
+        );
+
+        assertEquals("User not allowed to cancel occurrences of this booking series", exception.getMessage());
+        verify(bookingRepository, never()).save(any());
     }
 
     @Test

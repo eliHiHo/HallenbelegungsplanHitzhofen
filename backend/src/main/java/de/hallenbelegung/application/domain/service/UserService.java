@@ -103,6 +103,10 @@ public class UserService implements
 
         ensureEmailNotTaken(normalizedEmail, user.getId());
 
+        if (admin.getId().equals(user.getId()) && role != Role.ADMIN) {
+            throw new ValidationException("Admin cannot change own role");
+        }
+
         user.updateProfile(
                 firstName.trim(),
                 lastName.trim(),

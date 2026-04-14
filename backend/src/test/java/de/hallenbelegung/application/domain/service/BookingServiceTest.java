@@ -578,6 +578,30 @@ public class BookingServiceTest {
     }
 
     @Test
+    void cancel_rejects_already_cancelled_booking_before_permission_checks() {
+        User owner = createRepresentative();
+        User other = createOtherRepresentative();
+        Hall hall = createPartHallA();
+        Booking booking = createBooking(
+                owner,
+                hall,
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 11, 0)
+        );
+        booking.cancel(owner, "Schon storniert");
+
+        when(userRepository.findById(other.getId())).thenReturn(Optional.of(other));
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.cancel(other.getId(), booking.getId(), "Nochmal")
+        );
+
+        assertEquals("Booking is already cancelled", exception.getMessage());
+    }
+
+    @Test
     void cancel_rejects_other_user() {
         User owner = createRepresentative();
         User other = createOtherRepresentative();
@@ -757,6 +781,31 @@ public class BookingServiceTest {
         ValidationException exception = assertThrows(
                 ValidationException.class,
                 () -> service.addFeedback(owner.getId(), booking.getId(), 12, "Kommentar")
+        );
+
+        assertEquals("Cannot add feedback to cancelled booking", exception.getMessage());
+    }
+
+    @Test
+    void addFeedback_rejects_cancelled_booking_before_permission_checks() {
+        User owner = createRepresentative();
+        User other = createOtherRepresentative();
+        Hall hall = createPartHallA();
+        Booking booking = createBookingWithId(
+                UUID.randomUUID(),
+                owner,
+                hall,
+                LocalDateTime.of(2026, 4, 13, 10, 0),
+                LocalDateTime.of(2026, 4, 13, 11, 0)
+        );
+        booking.cancel(owner, "Ausfall");
+
+        when(userRepository.findById(other.getId())).thenReturn(Optional.of(other));
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.addFeedback(other.getId(), booking.getId(), 12, "Kommentar")
         );
 
         assertEquals("Cannot add feedback to cancelled booking", exception.getMessage());
@@ -1171,6 +1220,40 @@ public class BookingServiceTest {
     }
 
     @Test
+    void update_rejects_null_title() {
+        User admin = createAdmin();
+        User owner = createRepresentative();
+        Hall hall = createPartHallA();
+
+        Booking booking = createBookingWithId(
+                UUID.randomUUID(),
+                owner,
+                hall,
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 11, 0)
+        );
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.update(
+                        admin.getId(),
+                        booking.getId(),
+                        hall.getId(),
+                        null,
+                        "Beschreibung",
+                        LocalDateTime.of(2026, 4, 21, 10, 0),
+                        LocalDateTime.of(2026, 4, 21, 11, 0)
+                )
+        );
+
+        assertEquals("Title required", exception.getMessage());
+    }
+
+    @Test
     void update_rejects_null_times() {
         User admin = createAdmin();
         User owner = createRepresentative();
@@ -1411,6 +1494,106 @@ public class BookingServiceTest {
         );
 
         assertEquals("Seconds and nanoseconds are not allowed", exception.getMessage());
+    }
+
+    @Test
+    void update_rejects_seconds_and_nanoseconds_in_end_time() {
+        User admin = createAdmin();
+        User owner = createRepresentative();
+        Hall hall = createPartHallA();
+
+        Booking booking = createBookingWithId(
+                UUID.randomUUID(),
+                owner,
+                hall,
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 11, 0)
+        );
+
+        LocalDateTime start = LocalDateTime.of(2026, 4, 21, 10, 15);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 21, 11, 0, 1);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.update(
+                        admin.getId(),
+                        booking.getId(),
+                        hall.getId(),
+                        "Titel",
+                        "Beschreibung",
+                        start,
+                        end
+                )
+        );
+
+        assertEquals("Seconds and nanoseconds are not allowed", exception.getMessage());
+    }
+
+    @Test
+    void update_accepts_exact_opening_boundaries() {
+        User admin = createAdmin();
+        User owner = createRepresentative();
+        Hall hall = createPartHallA();
+
+        Booking booking = createBookingWithId(
+                UUID.randomUUID(),
+                owner,
+                hall,
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 11, 0)
+        );
+
+        LocalDateTime start = LocalDateTime.of(2026, 4, 21, 8, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 21, 22, 0);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+        when(bookingRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRepository.save(booking)).thenReturn(booking);
+
+        Booking result = service.update(admin.getId(), booking.getId(), hall.getId(), "Titel", "Beschreibung", start, end);
+
+        assertEquals(start, result.getStartAt());
+        assertEquals(end, result.getEndAt());
+    }
+
+    @Test
+    void update_accepts_exact_one_year_boundary() {
+        User admin = createAdmin();
+        User owner = createRepresentative();
+        Hall hall = createPartHallA();
+
+        Booking booking = createBookingWithId(
+                UUID.randomUUID(),
+                owner,
+                hall,
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 11, 0)
+        );
+
+        LocalDateTime start = LocalDateTime.of(2027, 4, 14, 10, 0);
+        LocalDateTime end = LocalDateTime.of(2027, 4, 14, 11, 0);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+        when(bookingRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRepository.save(booking)).thenReturn(booking);
+
+        Booking result = service.update(admin.getId(), booking.getId(), hall.getId(), "Titel", "Beschreibung", start, end);
+
+        assertEquals(start, result.getStartAt());
     }
 
     @Test
@@ -1758,5 +1941,52 @@ public class BookingServiceTest {
         );
 
         assertEquals(fullHall.getId(), result.getHall().getId());
+    }
+
+    @Test
+    void update_ignores_cancelled_bookings_in_conflict_check_for_same_part_hall() {
+        User admin = createAdmin();
+        User owner = createRepresentative();
+        Hall hall = createPartHallA();
+
+        Booking booking = createBookingWithId(
+                UUID.randomUUID(),
+                owner,
+                hall,
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 11, 0)
+        );
+        Booking cancelledConflict = createBookingWithId(
+                UUID.randomUUID(),
+                owner,
+                hall,
+                LocalDateTime.of(2026, 4, 21, 10, 0),
+                LocalDateTime.of(2026, 4, 21, 11, 0)
+        );
+        cancelledConflict.cancel(owner, "Storniert");
+
+        LocalDateTime newStart = LocalDateTime.of(2026, 4, 21, 10, 0);
+        LocalDateTime newEnd = LocalDateTime.of(2026, 4, 21, 11, 0);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        when(hallRepository.findById(hall.getId())).thenReturn(Optional.of(hall));
+        when(bookingRepository.findByHallIdAndTimeRange(hall.getId(), newStart, newEnd)).thenReturn(List.of(cancelledConflict));
+        when(bookingRepository.findByTimeRange(newStart, newEnd)).thenReturn(List.of(cancelledConflict));
+        when(blockedTimeRepository.findByHallIdAndTimeRange(hall.getId(), newStart, newEnd)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(newStart, newEnd)).thenReturn(List.of());
+        when(bookingRepository.save(booking)).thenReturn(booking);
+
+        Booking result = service.update(
+                admin.getId(),
+                booking.getId(),
+                hall.getId(),
+                "Titel",
+                "Beschreibung",
+                newStart,
+                newEnd
+        );
+
+        assertEquals(hall.getId(), result.getHall().getId());
     }
 }

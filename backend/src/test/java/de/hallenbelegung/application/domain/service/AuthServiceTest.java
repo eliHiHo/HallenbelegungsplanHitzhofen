@@ -1,6 +1,7 @@
 package de.hallenbelegung.application.domain.service;
 
 import de.hallenbelegung.application.domain.exception.ForbiddenException;
+import de.hallenbelegung.application.domain.exception.NotFoundException;
 import de.hallenbelegung.application.domain.exception.ValidationException;
 import de.hallenbelegung.application.domain.model.Role;
 import de.hallenbelegung.application.domain.model.User;
@@ -231,6 +232,37 @@ public class AuthServiceTest {
         }
     }
 
+    static class ThrowingLoginRateLimitPort extends CapturingLoginRateLimitPort {
+        RuntimeException loginException;
+        RuntimeException passwordResetException;
+
+        @Override
+        public void checkLoginAllowed(String key) {
+            super.checkLoginAllowed(key);
+            if (loginException != null) {
+                throw loginException;
+            }
+        }
+
+        @Override
+        public void checkPasswordResetAllowed(String key) {
+            super.checkPasswordResetAllowed(key);
+            if (passwordResetException != null) {
+                throw passwordResetException;
+            }
+        }
+    }
+
+    static class CapturingHash implements PasswordHashingPort {
+        String lastRaw;
+
+        @Override
+        public String hash(String raw) {
+            lastRaw = raw;
+            return "hashed:" + raw;
+        }
+    }
+
     private static User createAndSaveActiveUser(InMemoryUserRepo userRepo, String email) {
         return userRepo.save(User.createNew(
                 "John",
@@ -256,7 +288,7 @@ public class AuthServiceTest {
 
     private static AuthService createService(InMemoryUserRepo userRepo,
                                              ConfigurablePasswordVerifier verifier,
-                                             SimpleHash hasher,
+                                             PasswordHashingPort hasher,
                                              CapturingSessionPort sessionPort,
                                              CapturingPasswordResetPort resetPort,
                                              CapturingMailPort mailPort,
@@ -333,6 +365,40 @@ public class AuthServiceTest {
     }
 
     @Test
+    void login_stops_immediately_when_rate_limited() {
+        InMemoryUserRepo userRepo = new InMemoryUserRepo();
+        createAndSaveActiveUser(userRepo, "john@example.com");
+
+        ConfigurablePasswordVerifier verifier = new ConfigurablePasswordVerifier(true);
+        CapturingSessionPort sessionPort = new CapturingSessionPort();
+        ThrowingLoginRateLimitPort rateLimitPort = new ThrowingLoginRateLimitPort();
+        rateLimitPort.loginException = new ForbiddenException("Too many login attempts");
+
+        AuthService service = createService(
+                userRepo,
+                verifier,
+                new SimpleHash(),
+                sessionPort,
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                rateLimitPort
+        );
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.login("john@example.com", "secret123")
+        );
+
+        assertEquals("Too many login attempts", exception.getMessage());
+        assertEquals("john@example.com", rateLimitPort.checkedLoginKey);
+        assertNull(rateLimitPort.failedLoginKey);
+        assertNull(rateLimitPort.resetLoginKey);
+        assertNull(verifier.lastRaw);
+        assertNull(sessionPort.invalidatedSessionsForUserId);
+        assertNull(sessionPort.createdForEmail);
+    }
+
+    @Test
     void login_rejects_wrong_password() {
         InMemoryUserRepo userRepo = new InMemoryUserRepo();
         createAndSaveActiveUser(userRepo, "john@example.com");
@@ -363,14 +429,17 @@ public class AuthServiceTest {
         InMemoryUserRepo userRepo = new InMemoryUserRepo();
         createAndSaveInactiveUser(userRepo, "inactive@example.com");
 
+        CapturingSessionPort sessionPort = new CapturingSessionPort();
+        CapturingLoginRateLimitPort rateLimitPort = new CapturingLoginRateLimitPort();
+
         AuthService service = createService(
                 userRepo,
                 new ConfigurablePasswordVerifier(true),
                 new SimpleHash(),
-                new CapturingSessionPort(),
+                sessionPort,
                 new CapturingPasswordResetPort(),
                 new CapturingMailPort(),
-                new CapturingLoginRateLimitPort()
+                rateLimitPort
         );
 
         ForbiddenException exception = assertThrows(
@@ -379,6 +448,10 @@ public class AuthServiceTest {
         );
 
         assertEquals("User account is inactive", exception.getMessage());
+        assertNull(rateLimitPort.failedLoginKey);
+        assertNull(rateLimitPort.resetLoginKey);
+        assertNull(sessionPort.invalidatedSessionsForUserId);
+        assertNull(sessionPort.createdForEmail);
     }
 
     @Test
@@ -630,6 +703,40 @@ public class AuthServiceTest {
     }
 
     @Test
+    void forgotPassword_stops_when_rate_limited() {
+        InMemoryUserRepo userRepo = new InMemoryUserRepo();
+        User user = createAndSaveActiveUser(userRepo, "john@example.com");
+
+        CapturingPasswordResetPort resetPort = new CapturingPasswordResetPort();
+        CapturingMailPort mailPort = new CapturingMailPort();
+        ThrowingLoginRateLimitPort rateLimitPort = new ThrowingLoginRateLimitPort();
+        rateLimitPort.passwordResetException = new ForbiddenException("Too many reset requests");
+
+        AuthService service = createService(
+                userRepo,
+                new ConfigurablePasswordVerifier(true),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                resetPort,
+                mailPort,
+                rateLimitPort
+        );
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.requestPasswordReset("john@example.com")
+        );
+
+        assertEquals("Too many reset requests", exception.getMessage());
+        assertEquals("john@example.com", rateLimitPort.checkedPasswordResetKey);
+        assertNull(rateLimitPort.recordedPasswordResetKey);
+        assertFalse(mailPort.sent);
+        assertNull(resetPort.invalidatedTokensForUserId);
+        assertNull(resetPort.createdForUserId);
+        assertNotNull(userRepo.findById(user.getId()).orElse(null));
+    }
+
+    @Test
     void resetPassword_rejects_blank_token() {
         AuthService service = createService(
                 new InMemoryUserRepo(),
@@ -651,12 +758,18 @@ public class AuthServiceTest {
 
     @Test
     void resetPassword_rejects_short_password() {
+        InMemoryUserRepo userRepo = new InMemoryUserRepo();
+        User user = createAndSaveActiveUser(userRepo, "john@example.com");
+        CapturingPasswordResetPort resetPort = new CapturingPasswordResetPort();
+        resetPort.validTokens.put("reset-token", user.getId());
+        CapturingSessionPort sessionPort = new CapturingSessionPort();
+
         AuthService service = createService(
-                new InMemoryUserRepo(),
+                userRepo,
                 new ConfigurablePasswordVerifier(true),
                 new SimpleHash(),
-                new CapturingSessionPort(),
-                new CapturingPasswordResetPort(),
+                sessionPort,
+                resetPort,
                 new CapturingMailPort(),
                 new CapturingLoginRateLimitPort()
         );
@@ -667,6 +780,10 @@ public class AuthServiceTest {
         );
 
         assertEquals("Password must have at least 8 characters", exception.getMessage());
+        User unchangedUser = userRepo.findById(user.getId()).orElseThrow();
+        assertEquals("stored-hash", unchangedUser.getPasswordHash());
+        assertNull(resetPort.invalidatedToken);
+        assertNull(sessionPort.invalidatedSessionsForUserId);
     }
 
     @Test
@@ -696,12 +813,14 @@ public class AuthServiceTest {
 
         CapturingPasswordResetPort resetPort = new CapturingPasswordResetPort();
         resetPort.validTokens.put("reset-token", user.getId());
+        CapturingSessionPort sessionPort = new CapturingSessionPort();
+        CapturingHash hasher = new CapturingHash();
 
         AuthService service = createService(
                 userRepo,
                 new ConfigurablePasswordVerifier(true),
-                new SimpleHash(),
-                new CapturingSessionPort(),
+                hasher,
+                sessionPort,
                 resetPort,
                 new CapturingMailPort(),
                 new CapturingLoginRateLimitPort()
@@ -713,6 +832,39 @@ public class AuthServiceTest {
         );
 
         assertEquals("User account is inactive", exception.getMessage());
+        assertNull(hasher.lastRaw);
+        assertNull(resetPort.invalidatedToken);
+        assertNull(sessionPort.invalidatedSessionsForUserId);
+    }
+
+    @Test
+    void resetPassword_rejects_when_token_user_is_missing_without_side_effects() {
+        InMemoryUserRepo userRepo = new InMemoryUserRepo();
+
+        CapturingPasswordResetPort resetPort = new CapturingPasswordResetPort();
+        resetPort.validTokens.put("reset-token", UUID.randomUUID());
+        CapturingSessionPort sessionPort = new CapturingSessionPort();
+        CapturingHash hasher = new CapturingHash();
+
+        AuthService service = createService(
+                userRepo,
+                new ConfigurablePasswordVerifier(true),
+                hasher,
+                sessionPort,
+                resetPort,
+                new CapturingMailPort(),
+                new CapturingLoginRateLimitPort()
+        );
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.resetPassword("reset-token", "newpassword")
+        );
+
+        assertEquals("User not found", exception.getMessage());
+        assertNull(hasher.lastRaw);
+        assertNull(resetPort.invalidatedToken);
+        assertNull(sessionPort.invalidatedSessionsForUserId);
     }
 
     @Test
