@@ -6,11 +6,55 @@ services:
       POSTGRES_DB: hallen
       POSTGRES_USER: hallen
       POSTGRES_PASSWORD: hallen
-    ports:
-      - "5432:5432"
     volumes:
       - hallen_db_data:/var/lib/postgresql/data
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - hallen-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hallen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: hallen-backend:latest
+    container_name: hallen-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://db:5432/hallen
+      QUARKUS_DATASOURCE_USERNAME: hallen
+      QUARKUS_DATASOURCE_PASSWORD: hallen
+      QUARKUS_HTTP_PORT: 8080
+      APP_BASE_URL: https://hallenbelegungsplan.hitzhofen.de
+      QUARKUS_MAILER_HOST: smtp.yourprovider.de
+      QUARKUS_MAILER_PORT: "587"
+      QUARKUS_MAILER_USERNAME: noreply@hitzhofen.de
+      QUARKUS_MAILER_PASSWORD: DEIN_PASSWORT
+      QUARKUS_MAILER_FROM: noreply@hitzhofen.de
+    networks:
+      - hallen-net
+
+  caddy:
+    image: caddy:2
+    container_name: hallen-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - ../frontend/dist:/srv/frontend:ro
+    networks:
+      - hallen-net
+
+networks:
+  hallen-net:
+    driver: bridge
 
 volumes:
   hallen_db_data:
+  caddy_data:
+  caddy_config:

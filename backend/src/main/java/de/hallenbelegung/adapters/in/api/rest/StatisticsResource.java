@@ -55,17 +55,6 @@ public class StatisticsResource {
         this.getSeriesStatisticsDetailUseCase = getSeriesStatisticsDetailUseCase;
     }
 
-    /**
-     * Returns hall utilisation statistics for the given time range.
-     *
-     * WARNING – DTO gap: HallStatisticsDTO currently only carries hallName and bookingCount.
-     * The underlying HallStatisticsView also contains cancelledBookings, totalParticipants,
-     * utilizationPercent and topSeries, which are silently dropped here.
-     * HallStatisticsDTO must be enriched before this endpoint can return complete data.
-     *
-     * @param from  start of the period (inclusive), defaults to first day of current year
-     * @param to    end of the period (inclusive), defaults to today
-     */
     @GET
     @Path("/halls")
     public List<HallStatisticsDTO> getHallStatistics(
@@ -85,17 +74,6 @@ public class StatisticsResource {
                 .toList();
     }
 
-    /**
-     * Returns a summary overview of all booking series with their usage statistics.
-     *
-     * WARNING – DTO gap: SeriesStatisticsDTO currently only carries title and bookingCount.
-     * The underlying SeriesStatisticsOverviewView also contains hallName, conductedAppointments,
-     * cancelledAppointments, totalParticipants and averageParticipants, which are dropped here.
-     * SeriesStatisticsDTO must be enriched before this endpoint can return complete data.
-     *
-     * @param from  start of the period (inclusive), defaults to first day of current year
-     * @param to    end of the period (inclusive), defaults to today
-     */
     @GET
     @Path("/series")
     public List<SeriesStatisticsDTO> getSeriesStatisticsOverview(
@@ -115,13 +93,6 @@ public class StatisticsResource {
                 .toList();
     }
 
-    /**
-     * Returns detailed statistics for a specific booking series, including occurrence-level data.
-     *
-     * @param id    ID of the booking series
-     * @param from  start of the period (inclusive), defaults to first day of current year
-     * @param to    end of the period (inclusive), defaults to today
-     */
     @GET
     @Path("/series/{id}")
     public SeriesStatisticsDetailDTO getSeriesStatisticsDetail(

@@ -7,6 +7,7 @@ import de.hallenbelegung.application.domain.port.out.UserRepositoryPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,9 +26,18 @@ public class JpaUserRepository implements UserRepositoryPort {
     }
 
     @Override
+    @Transactional
     public User save(User user) {
         DBUser entity = mapper.toEntity(user);
+
+        if (user.getId() == null) {
+            em.persist(entity);
+            em.flush(); // WICHTIG
+            return mapper.toDomain(entity);
+        }
+
         DBUser merged = em.merge(entity);
+        em.flush(); // WICHTIG
         return mapper.toDomain(merged);
     }
 

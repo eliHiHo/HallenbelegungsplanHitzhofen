@@ -7,6 +7,7 @@ import de.hallenbelegung.application.domain.port.out.HallRepositoryPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,9 +23,18 @@ public class JpaHallRepository implements HallRepositoryPort {
     private final HallPersistenceMapper mapper = new HallPersistenceMapper();
 
     @Override
+    @Transactional
     public Hall save(Hall hall) {
         DBHall entity = mapper.toEntity(hall);
+
+        if (hall.getId() == null) {
+            em.persist(entity);
+            em.flush();
+            return mapper.toDomain(entity);
+        }
+
         DBHall merged = em.merge(entity);
+        em.flush();
         return mapper.toDomain(merged);
     }
 

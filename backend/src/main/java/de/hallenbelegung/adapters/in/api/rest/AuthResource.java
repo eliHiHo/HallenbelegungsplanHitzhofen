@@ -34,8 +34,11 @@ import jakarta.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 public class AuthResource {
 
-    private static final String SESSION_COOKIE_NAME = "HB_SESSION";
+    @org.eclipse.microprofile.config.inject.ConfigProperty(
+            name = "app.session.cookie.secure", defaultValue = "true")
+    boolean sessionCookieSecure;
 
+    private static final String SESSION_COOKIE_NAME = "HB_SESSION";
     private final LoginUseCase loginUseCase;
     private final LogoutUseCase logoutUseCase;
     private final GetCurrentUserUseCase getCurrentUserUseCase;
@@ -139,12 +142,13 @@ public class AuthResource {
         return sessionId;
     }
 
+    // NACHHER:
     private NewCookie createSessionCookie(String sessionId) {
         return new NewCookie.Builder(SESSION_COOKIE_NAME)
                 .value(sessionId)
                 .path("/")
                 .httpOnly(true)
-                .secure(false)
+                .secure(sessionCookieSecure)
                 .build();
     }
 
@@ -153,7 +157,7 @@ public class AuthResource {
                 .value("")
                 .path("/")
                 .httpOnly(true)
-                .secure(false)
+                .secure(sessionCookieSecure)
                 .maxAge(0)
                 .build();
     }
