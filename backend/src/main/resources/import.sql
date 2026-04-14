@@ -10,7 +10,7 @@ INSERT INTO users (id, first_name, last_name, email, password_hash, role, active
 VALUES (
   '00000000-0000-0000-0000-000000000010',
   'Admin', 'User', 'admin@hitzhofen.de',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$12$ZQxScllTe4bxTztD0on4seLlOaeXGTWaPis/cgWUg8WYNNwDkGO16',
   'ADMIN', true, now(), now()
 );
 
@@ -19,6 +19,6 @@ INSERT INTO users (id, first_name, last_name, email, password_hash, role, active
 VALUES (
   '00000000-0000-0000-0000-000000000011',
   'Max', 'Mustermann', 'max@verein.de',
-  '$2a$10$TKh8H1.PfQ0A0bEzgGjb.e/YqhBqRTmM2XNJDIqEhpRcb0TjqvJlG',
+  '$2a$12$YIjjJPh9yxRADNFu4vRqLe.5iNF63AxIXqqLsLEjxiknYbTRFCBku',
   'CLUB_REPRESENTATIVE', true, now(), now()
 );
