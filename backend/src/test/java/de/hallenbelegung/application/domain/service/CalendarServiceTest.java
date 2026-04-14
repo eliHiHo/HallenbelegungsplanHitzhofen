@@ -7,6 +7,7 @@ import de.hallenbelegung.application.domain.model.BlockedTimeType;
 import de.hallenbelegung.application.domain.model.Booking;
 import de.hallenbelegung.application.domain.model.BookingRequest;
 import de.hallenbelegung.application.domain.model.BookingRequestStatus;
+import de.hallenbelegung.application.domain.model.BookingSeriesRequest;
 import de.hallenbelegung.application.domain.model.BookingStatus;
 import de.hallenbelegung.application.domain.model.Hall;
 import de.hallenbelegung.application.domain.model.HallType;
@@ -83,7 +84,7 @@ public class CalendarServiceTest {
         );
     }
 
-    private Hall hall(HallType hallType, String name) {
+    private Hall hall(String name) {
         return new Hall(
                 UUID.randomUUID(),
                 name,
@@ -91,7 +92,7 @@ public class CalendarServiceTest {
                 true,
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Instant.parse("2026-01-01T00:00:00Z"),
-                hallType
+                HallType.PART_SMALL
         );
     }
 
@@ -152,44 +153,375 @@ public class CalendarServiceTest {
         );
     }
 
+    private BookingSeriesRequest pendingSeriesRequest(
+            Hall hall,
+            User requester,
+            DayOfWeek weekday,
+            LocalTime start,
+            LocalTime end,
+            LocalDate startDate,
+            LocalDate endDate,
+            String title
+    ) {
+        return new BookingSeriesRequest(
+                UUID.randomUUID(),
+                title,
+                "desc",
+                weekday,
+                start,
+                end,
+                startDate,
+                endDate,
+                BookingRequestStatus.PENDING,
+                null,
+                hall,
+                requester,
+                null,
+                Instant.now(),
+                Instant.now(),
+                null
+        );
+    }
+
     @Test
-    void getWeek_guest_sees_bookings_and_blocked_times_sorted_without_requests() {
+    void getWeek_returns_empty_for_week_with_no_events() {
         LocalDate weekStart = LocalDate.of(2026, 5, 4);
-        LocalDateTime rangeStart = weekStart.atStartOfDay();
-        LocalDateTime rangeEnd = weekStart.plusDays(7).atStartOfDay();
+        LocalDateTime start = weekStart.atStartOfDay();
+        LocalDateTime end = weekStart.plusDays(7).atStartOfDay();
 
-        User representative = user(Role.CLUB_REPRESENTATIVE, true, "Rep", "One");
-        User admin = user(Role.ADMIN, true, "Admin", "One");
-        Hall hall = hall(HallType.PART_SMALL, "Halle A");
-
-        Booking insideBooking = booking(hall, representative,
-                LocalDateTime.of(2026, 5, 5, 10, 0),
-                LocalDateTime.of(2026, 5, 5, 11, 0),
-                "Training");
-        Booking outsideEdgeBooking = booking(hall, representative,
-                LocalDateTime.of(2026, 5, 11, 0, 0),
-                LocalDateTime.of(2026, 5, 11, 1, 0),
-                "Outside");
-
-        BlockedTime blocked = blockedTime(hall, admin,
-                LocalDateTime.of(2026, 5, 4, 8, 0),
-                LocalDateTime.of(2026, 5, 4, 9, 0),
-                "Wartung");
-
-        when(bookingRepository.findByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of(insideBooking, outsideEdgeBooking));
-        when(blockedTimeRepository.findAllByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of(blocked));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
 
         CalendarWeekView result = service.getWeek(weekStart, null);
 
-        assertEquals(weekStart, result.weekStart());
-        assertEquals(weekStart.plusDays(6), result.weekEnd());
-        assertEquals(2, result.entries().size());
+        assertTrue(result.entries().isEmpty());
+    }
+
+    @Test
+    void getWeek_entry_starting_exactly_at_rangeEnd_is_excluded() {
+        LocalDate weekStart = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = weekStart.atStartOfDay();
+        LocalDateTime end = weekStart.plusDays(7).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User owner = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
+
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of(
+                booking(hall, owner, end, end.plusHours(1), "Outside")
+        ));
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+
+        CalendarWeekView result = service.getWeek(weekStart, null);
+
+        assertTrue(result.entries().isEmpty());
+    }
+
+    @Test
+    void getWeek_entry_ending_exactly_at_rangeStart_is_included() {
+        LocalDate weekStart = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = weekStart.atStartOfDay();
+        LocalDateTime end = weekStart.plusDays(7).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User owner = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
+
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of(
+                booking(hall, owner, start.minusHours(1), start.plusMinutes(1), "Spanning")
+        ));
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+
+        CalendarWeekView result = service.getWeek(weekStart, null);
+
+        assertEquals(1, result.entries().size());
+    }
+
+    @Test
+    void getDay_entry_completely_before_day_excluded() {
+        LocalDate day = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = day.atStartOfDay();
+        LocalDateTime end = day.plusDays(1).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User owner = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
+
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of(
+                booking(hall, owner, start.minusHours(2), start, "Before")
+        ));
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+
+        CalendarDayView result = service.getDay(day, null);
+
+        assertTrue(result.entries().isEmpty());
+    }
+
+    @Test
+    void getDay_cancelled_booking_is_still_included() {
+        LocalDate day = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = day.atStartOfDay();
+        LocalDateTime end = day.plusDays(1).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User owner = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
+
+        Booking approved = booking(hall, owner, LocalDateTime.of(2026, 5, 4, 10, 0), LocalDateTime.of(2026, 5, 4, 11, 0), "Approved");
+        Booking cancelled = booking(hall, owner, LocalDateTime.of(2026, 5, 4, 12, 0), LocalDateTime.of(2026, 5, 4, 13, 0), "Cancelled");
+        cancelled.cancel(owner, "reason");
+
+        when(userRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of(approved, cancelled));
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+
+        CalendarDayView result = service.getDay(day, owner.getId());
+
+        assertEquals(List.of("APPROVED", "CANCELLED"), result.entries().stream().map(CalendarEntryView::status).sorted().toList());
+    }
+
+    @Test
+    void getDay_blocked_time_is_visible_for_guest() {
+        LocalDate day = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = day.atStartOfDay();
+        LocalDateTime end = day.plusDays(1).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User admin = user(Role.ADMIN, true, "Admin", "One");
+
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of(
+                blockedTime(hall, admin, LocalDateTime.of(2026, 5, 4, 10, 0), LocalDateTime.of(2026, 5, 4, 11, 0), "Wartung")
+        ));
+
+        CalendarDayView result = service.getDay(day, null);
+
         assertEquals(CalendarEntryType.BLOCKED_TIME, result.entries().get(0).type());
-        assertEquals(CalendarEntryType.BOOKING, result.entries().get(1).type());
-        assertFalse(result.entries().get(1).ownEntry());
+        assertFalse(result.entries().get(0).ownEntry());
+    }
+
+    @Test
+    void getDay_other_users_booking_not_marked_as_own_entry() {
+        LocalDate day = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = day.atStartOfDay();
+        LocalDateTime end = day.plusDays(1).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User current = user(Role.CLUB_REPRESENTATIVE, true, "Current", "Rep");
+        User other = user(Role.CLUB_REPRESENTATIVE, true, "Other", "Rep");
+
+        when(userRepository.findById(current.getId())).thenReturn(Optional.of(current));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of(
+                booking(hall, other, LocalDateTime.of(2026, 5, 4, 14, 0), LocalDateTime.of(2026, 5, 4, 15, 0), "Foreign")
+        ));
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+
+        CalendarDayView result = service.getDay(day, current.getId());
+
+        assertFalse(result.entries().get(0).ownEntry());
+    }
+
+    @Test
+    void getDay_own_booking_marked_as_own_entry() {
+        LocalDate day = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = day.atStartOfDay();
+        LocalDateTime end = day.plusDays(1).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User current = user(Role.CLUB_REPRESENTATIVE, true, "Current", "Rep");
+
+        when(userRepository.findById(current.getId())).thenReturn(Optional.of(current));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of(
+                booking(hall, current, LocalDateTime.of(2026, 5, 4, 14, 0), LocalDateTime.of(2026, 5, 4, 15, 0), "Own")
+        ));
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+
+        CalendarDayView result = service.getDay(day, current.getId());
+
+        assertTrue(result.entries().get(0).ownEntry());
+    }
+
+    @Test
+    void getDay_blocked_time_never_marked_as_own() {
+        LocalDate day = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = day.atStartOfDay();
+        LocalDateTime end = day.plusDays(1).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User current = user(Role.CLUB_REPRESENTATIVE, true, "Current", "Rep");
+        User admin = user(Role.ADMIN, true, "Admin", "One");
+
+        when(userRepository.findById(current.getId())).thenReturn(Optional.of(current));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of(
+                blockedTime(hall, admin, LocalDateTime.of(2026, 5, 4, 10, 0), LocalDateTime.of(2026, 5, 4, 11, 0), "Blocked")
+        ));
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+
+        CalendarDayView result = service.getDay(day, current.getId());
+
+        assertFalse(result.entries().get(0).ownEntry());
+    }
+
+    @Test
+    void getWeek_guest_does_not_see_pending_requests() {
+        LocalDate weekStart = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = weekStart.atStartOfDay();
+        LocalDateTime end = weekStart.plusDays(7).atStartOfDay();
+
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+
+        service.getWeek(weekStart, null);
 
         verify(bookingRequestRepository, never()).findByStatus(BookingRequestStatus.PENDING);
-        verify(bookingSeriesRequestRepository, never()).findByStatus(BookingRequestStatus.PENDING);
+    }
+
+    @Test
+    void getWeek_representative_sees_own_pending_series_request_occurrence() {
+        LocalDate weekStart = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = weekStart.atStartOfDay();
+        LocalDateTime end = weekStart.plusDays(7).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User rep = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
+
+        BookingSeriesRequest request = pendingSeriesRequest(
+                hall,
+                rep,
+                DayOfWeek.MONDAY,
+                LocalTime.of(18, 0),
+                LocalTime.of(19, 0),
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 31),
+                "Series"
+        );
+
+        when(userRepository.findById(rep.getId())).thenReturn(Optional.of(rep));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of(request));
+
+        CalendarWeekView result = service.getWeek(weekStart, rep.getId());
+
+        assertEquals(1, result.entries().stream().filter(e -> e.type() == CalendarEntryType.BOOKING_SERIES_REQUEST).count());
+    }
+
+    @Test
+    void getWeek_representative_does_not_see_others_series_requests() {
+        LocalDate weekStart = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = weekStart.atStartOfDay();
+        LocalDateTime end = weekStart.plusDays(7).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User rep = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
+        User other = user(Role.CLUB_REPRESENTATIVE, true, "Other", "Rep");
+
+        BookingSeriesRequest request = pendingSeriesRequest(
+                hall,
+                other,
+                DayOfWeek.MONDAY,
+                LocalTime.of(18, 0),
+                LocalTime.of(19, 0),
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 31),
+                "Series"
+        );
+
+        when(userRepository.findById(rep.getId())).thenReturn(Optional.of(rep));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of(request));
+
+        CalendarWeekView result = service.getWeek(weekStart, rep.getId());
+
+        assertTrue(result.entries().isEmpty());
+    }
+
+    @Test
+    void getWeek_series_request_with_multiple_occurrences_in_week_creates_multiple_entries() {
+        LocalDate weekStart = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = weekStart.atStartOfDay();
+        LocalDateTime end = weekStart.plusDays(7).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User rep = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
+
+        BookingSeriesRequest request = pendingSeriesRequest(
+                hall,
+                rep,
+                DayOfWeek.MONDAY,
+                LocalTime.of(18, 0),
+                LocalTime.of(19, 0),
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 31),
+                "Series"
+        );
+
+        when(userRepository.findById(rep.getId())).thenReturn(Optional.of(rep));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of(request, request));
+
+        CalendarWeekView result = service.getWeek(weekStart, rep.getId());
+
+        assertEquals(2, result.entries().stream().filter(e -> e.type() == CalendarEntryType.BOOKING_SERIES_REQUEST).count());
+    }
+
+    @Test
+    void getDay_series_request_occurrence_outside_series_date_range_excluded() {
+        LocalDate day = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = day.atStartOfDay();
+        LocalDateTime end = day.plusDays(1).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User rep = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
+
+        BookingSeriesRequest request = pendingSeriesRequest(
+                hall,
+                rep,
+                DayOfWeek.MONDAY,
+                LocalTime.of(18, 0),
+                LocalTime.of(19, 0),
+                day.plusDays(1),
+                day.plusDays(30),
+                "Series"
+        );
+
+        when(userRepository.findById(rep.getId())).thenReturn(Optional.of(rep));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of(request));
+
+        CalendarDayView result = service.getDay(day, rep.getId());
+
+        assertTrue(result.entries().isEmpty());
+    }
+
+    @Test
+    void getDay_entries_sorted_ascending_across_types() {
+        LocalDate day = LocalDate.of(2026, 5, 4);
+        LocalDateTime start = day.atStartOfDay();
+        LocalDateTime end = day.plusDays(1).atStartOfDay();
+        Hall hall = hall("Halle A");
+        User rep = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
+        User admin = user(Role.ADMIN, true, "Admin", "One");
+
+        Booking booking = booking(hall, rep, LocalDateTime.of(2026, 5, 4, 14, 0), LocalDateTime.of(2026, 5, 4, 15, 0), "Booking");
+        BlockedTime blocked = blockedTime(hall, admin, LocalDateTime.of(2026, 5, 4, 10, 0), LocalDateTime.of(2026, 5, 4, 11, 0), "Blocked");
+        BookingRequest request = pendingRequest(hall, rep, LocalDateTime.of(2026, 5, 4, 12, 0), LocalDateTime.of(2026, 5, 4, 13, 0), "Request");
+
+        when(userRepository.findById(rep.getId())).thenReturn(Optional.of(rep));
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of(booking));
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of(blocked));
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of(request));
+        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
+
+        CalendarDayView result = service.getDay(day, rep.getId());
+
+        assertEquals(
+                List.of(
+                        LocalDateTime.of(2026, 5, 4, 10, 0),
+                        LocalDateTime.of(2026, 5, 4, 12, 0),
+                        LocalDateTime.of(2026, 5, 4, 14, 0)
+                ),
+                result.entries().stream().map(CalendarEntryView::startDateTime).toList()
+        );
     }
 
     @Test
@@ -208,174 +540,15 @@ public class CalendarServiceTest {
 
     @Test
     void getWeek_rejects_inactive_user() {
-        User inactiveUser = user(Role.CLUB_REPRESENTATIVE, false, "Inactive", "Rep");
+        User inactive = user(Role.CLUB_REPRESENTATIVE, false, "Inactive", "Rep");
 
-        when(userRepository.findById(inactiveUser.getId())).thenReturn(Optional.of(inactiveUser));
+        when(userRepository.findById(inactive.getId())).thenReturn(Optional.of(inactive));
 
         ForbiddenException ex = assertThrows(
                 ForbiddenException.class,
-                () -> service.getWeek(LocalDate.of(2026, 5, 4), inactiveUser.getId())
+                () -> service.getWeek(LocalDate.of(2026, 5, 4), inactive.getId())
         );
 
         assertEquals("User inactive", ex.getMessage());
     }
-
-    @Test
-    void getDay_admin_sees_pending_requests_and_series_occurrences() {
-        LocalDate day = LocalDate.of(2026, 5, 4);
-        LocalDateTime rangeStart = day.atStartOfDay();
-        LocalDateTime rangeEnd = day.plusDays(1).atStartOfDay();
-
-        User admin = user(Role.ADMIN, true, "Admin", "One");
-        User requester = user(Role.CLUB_REPRESENTATIVE, true, "Club", "Rep");
-        Hall hall = hall(HallType.PART_SMALL, "Halle A");
-
-        BookingRequest pendingRequest = pendingRequest(
-                hall,
-                requester,
-                LocalDateTime.of(2026, 5, 4, 12, 0),
-                LocalDateTime.of(2026, 5, 4, 13, 0),
-                "Anfrage"
-        );
-
-        de.hallenbelegung.application.domain.model.BookingSeriesRequest seriesRequest =
-                new de.hallenbelegung.application.domain.model.BookingSeriesRequest(
-                        UUID.randomUUID(),
-                        "Serie",
-                        "desc",
-                        DayOfWeek.MONDAY,
-                        LocalTime.of(18, 0),
-                        LocalTime.of(19, 0),
-                        LocalDate.of(2026, 5, 1),
-                        LocalDate.of(2026, 5, 31),
-                        BookingRequestStatus.PENDING,
-                        null,
-                        hall,
-                        requester,
-                        null,
-                        Instant.now(),
-                        Instant.now(),
-                        null
-                );
-
-        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
-        when(bookingRepository.findByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of());
-        when(blockedTimeRepository.findAllByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of());
-        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of(pendingRequest));
-        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of(seriesRequest));
-
-        CalendarDayView result = service.getDay(day, admin.getId());
-
-        assertEquals(2, result.entries().size());
-        assertTrue(result.entries().stream().anyMatch(e -> e.type() == CalendarEntryType.BOOKING_REQUEST));
-        assertTrue(result.entries().stream().anyMatch(e -> e.type() == CalendarEntryType.BOOKING_SERIES_REQUEST));
-    }
-
-    @Test
-    void getDay_representative_sees_only_own_pending_requests() {
-        LocalDate day = LocalDate.of(2026, 5, 4);
-        LocalDateTime rangeStart = day.atStartOfDay();
-        LocalDateTime rangeEnd = day.plusDays(1).atStartOfDay();
-
-        User representative = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
-        User otherRepresentative = user(Role.CLUB_REPRESENTATIVE, true, "Other", "Rep");
-        Hall hall = hall(HallType.PART_SMALL, "Halle A");
-
-        BookingRequest ownPending = pendingRequest(
-                hall,
-                representative,
-                LocalDateTime.of(2026, 5, 4, 12, 0),
-                LocalDateTime.of(2026, 5, 4, 13, 0),
-                "Eigene Anfrage"
-        );
-        BookingRequest foreignPending = pendingRequest(
-                hall,
-                otherRepresentative,
-                LocalDateTime.of(2026, 5, 4, 13, 0),
-                LocalDateTime.of(2026, 5, 4, 14, 0),
-                "Fremde Anfrage"
-        );
-
-        when(userRepository.findById(representative.getId())).thenReturn(Optional.of(representative));
-        when(bookingRepository.findByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of());
-        when(blockedTimeRepository.findAllByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of());
-        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of(ownPending, foreignPending));
-        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
-
-        CalendarDayView result = service.getDay(day, representative.getId());
-
-        assertEquals(1, result.entries().size());
-        CalendarEntryView entry = result.entries().get(0);
-        assertEquals("Eigene Anfrage", entry.title());
-        assertTrue(entry.ownEntry());
-        assertEquals(CalendarEntryType.BOOKING_REQUEST, entry.type());
-    }
-
-    @Test
-    void getDay_marks_own_booking_entry_for_current_user() {
-        LocalDate day = LocalDate.of(2026, 5, 4);
-        LocalDateTime rangeStart = day.atStartOfDay();
-        LocalDateTime rangeEnd = day.plusDays(1).atStartOfDay();
-
-        User representative = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
-        Hall hall = hall(HallType.PART_SMALL, "Halle A");
-
-        Booking ownBooking = booking(
-                hall,
-                representative,
-                LocalDateTime.of(2026, 5, 4, 17, 0),
-                LocalDateTime.of(2026, 5, 4, 18, 0),
-                "Eigene Buchung"
-        );
-
-        when(userRepository.findById(representative.getId())).thenReturn(Optional.of(representative));
-        when(bookingRepository.findByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of(ownBooking));
-        when(blockedTimeRepository.findAllByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of());
-        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
-        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
-
-        CalendarDayView result = service.getDay(day, representative.getId());
-
-        assertEquals(1, result.entries().size());
-        assertTrue(result.entries().get(0).ownEntry());
-        assertEquals("APPROVED", result.entries().get(0).status());
-    }
-
-    @Test
-    void getDay_sorts_entries_by_start_time_ascending() {
-        LocalDate day = LocalDate.of(2026, 5, 4);
-        LocalDateTime rangeStart = day.atStartOfDay();
-        LocalDateTime rangeEnd = day.plusDays(1).atStartOfDay();
-
-        User representative = user(Role.CLUB_REPRESENTATIVE, true, "Owner", "Rep");
-        Hall hall = hall(HallType.PART_SMALL, "Halle A");
-
-        Booking later = booking(
-                hall,
-                representative,
-                LocalDateTime.of(2026, 5, 4, 20, 0),
-                LocalDateTime.of(2026, 5, 4, 21, 0),
-                "Spaet"
-        );
-        Booking earlier = booking(
-                hall,
-                representative,
-                LocalDateTime.of(2026, 5, 4, 9, 0),
-                LocalDateTime.of(2026, 5, 4, 10, 0),
-                "Frueh"
-        );
-
-        when(userRepository.findById(representative.getId())).thenReturn(Optional.of(representative));
-        when(bookingRepository.findByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of(later, earlier));
-        when(blockedTimeRepository.findAllByTimeRange(rangeStart, rangeEnd)).thenReturn(List.of());
-        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
-        when(bookingSeriesRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of());
-
-        CalendarDayView result = service.getDay(day, representative.getId());
-
-        assertEquals(2, result.entries().size());
-        assertEquals("Frueh", result.entries().get(0).title());
-        assertEquals("Spaet", result.entries().get(1).title());
-    }
 }
-

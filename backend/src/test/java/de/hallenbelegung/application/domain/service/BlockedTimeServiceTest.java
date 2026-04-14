@@ -822,6 +822,20 @@ public class BlockedTimeServiceTest {
     }
 
     @Test
+    void getById_rejects_inactive_admin() {
+        User inactiveAdmin = createInactiveAdmin();
+
+        when(userRepository.findById(inactiveAdmin.getId())).thenReturn(Optional.of(inactiveAdmin));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.getById(inactiveAdmin.getId(), UUID.randomUUID())
+        );
+
+        assertEquals("Admin user inactive", exception.getMessage());
+    }
+
+    @Test
     void delete_success_for_admin() {
         User admin = createAdmin();
         Hall hall = createPartHallA();
@@ -970,6 +984,19 @@ public class BlockedTimeServiceTest {
         service.syncPublicHolidaysForYear(2026);
 
         verify(blockedTimeRepository, never()).save(any());
+    }
+
+    @Test
+    void syncPublicHolidaysForYear_handles_holiday_api_exception_without_propagating() {
+        User admin = createAdmin();
+        Hall fullHall = createFullHall();
+
+        when(hallRepository.findAllActive()).thenReturn(List.of(fullHall));
+        when(userRepository.findAllActive()).thenReturn(List.of(admin));
+        when(publicHolidayPort.findHolidays(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)))
+                .thenThrow(new RuntimeException("upstream down"));
+
+        assertDoesNotThrow(() -> service.syncPublicHolidaysForYear(2026));
     }
 
     @Test

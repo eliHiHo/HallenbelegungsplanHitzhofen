@@ -967,4 +967,505 @@ public class BookingRequestServiceTest {
 
         assertEquals("Hall inactive", exception.getMessage());
     }
+
+    @Test
+    void create_request_rejects_inactive_hall() {
+        User user = createRepresentative();
+        Hall inactiveHall = createInactiveHall();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(hallRepository.findById(inactiveHall.getId())).thenReturn(Optional.of(inactiveHall));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.create(
+                        user.getId(),
+                        inactiveHall.getId(),
+                        "Training",
+                        "desc",
+                        LocalDateTime.of(2026, 4, 21, 10, 0),
+                        LocalDateTime.of(2026, 4, 21, 11, 0)
+                )
+        );
+
+        assertEquals("Hall inactive", exception.getMessage());
+    }
+
+    @Test
+    void approve_rejects_unknown_admin() {
+        UUID adminId = UUID.randomUUID();
+
+        when(userRepository.findById(adminId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.approve(adminId, UUID.randomUUID())
+        );
+
+        assertEquals("Admin user not found", exception.getMessage());
+    }
+
+    @Test
+    void approve_rejects_inactive_admin() {
+        User inactiveAdmin = new User(
+                UUID.randomUUID(),
+                "Inactive",
+                "Admin",
+                "inactive-admin@example.com",
+                "hash",
+                Role.ADMIN,
+                false,
+                Instant.now(),
+                Instant.now()
+        );
+
+        when(userRepository.findById(inactiveAdmin.getId())).thenReturn(Optional.of(inactiveAdmin));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.approve(inactiveAdmin.getId(), UUID.randomUUID())
+        );
+
+        assertEquals("Admin user inactive", exception.getMessage());
+    }
+
+    @Test
+    void approve_rejects_unknown_request() {
+        User admin = createAdmin();
+        UUID requestId = UUID.randomUUID();
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRequestRepository.findById(requestId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.approve(admin.getId(), requestId)
+        );
+
+        assertEquals("Booking request not found", exception.getMessage());
+    }
+
+    @Test
+    void approve_recheck_conflict_at_approval_time() {
+        User admin = createAdmin();
+        User requester = createRepresentative();
+        Hall hall = createPartHallA();
+        LocalDateTime start = LocalDateTime.of(2026, 4, 21, 10, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 21, 11, 0);
+        BookingRequest request = withId(BookingRequest.createNew("Training", "desc", start, end, hall, requester), UUID.randomUUID());
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRequestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(bookingRepository.findByHallIdAndTimeRange(hall.getId(), start, end))
+                .thenReturn(List.of(createApprovedBooking(hall, requester, start, end)));
+
+        BookingConflictException exception = assertThrows(
+                BookingConflictException.class,
+                () -> service.approve(admin.getId(), request.getId())
+        );
+
+        assertEquals("Conflict with existing booking", exception.getMessage());
+    }
+
+    @Test
+    void approve_sends_notification_on_success() {
+        User admin = createAdmin();
+        User requester = createRepresentative();
+        Hall hall = createPartHallA();
+        LocalDateTime start = LocalDateTime.of(2026, 4, 21, 12, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 21, 13, 0);
+        BookingRequest request = withId(BookingRequest.createNew("Training", "desc", start, end, hall, requester), UUID.randomUUID());
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRequestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        when(bookingRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findByHallIdAndTimeRange(hall.getId(), start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(bookingRequestRepository.save(any(BookingRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.approve(admin.getId(), request.getId());
+
+        verify(notificationPort, times(1)).notifyRequesterAboutBookingRequestApproved(eq(request), any(Booking.class));
+    }
+
+    @Test
+    void reject_rejects_non_pending_request() {
+        User admin = createAdmin();
+        User requester = createRepresentative();
+        Hall hall = createPartHallA();
+        BookingRequest request = withId(
+                BookingRequest.createNew(
+                        "Training",
+                        "desc",
+                        LocalDateTime.of(2026, 4, 22, 10, 0),
+                        LocalDateTime.of(2026, 4, 22, 11, 0),
+                        hall,
+                        requester
+                ),
+                UUID.randomUUID()
+        );
+        request.approve(admin);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRequestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+
+        ValidationException exception = assertThrows(
+                ValidationException.class,
+                () -> service.reject(admin.getId(), request.getId(), "reason")
+        );
+
+        assertEquals("Booking request is not open", exception.getMessage());
+    }
+
+    @Test
+    void reject_rejects_unknown_admin() {
+        UUID adminId = UUID.randomUUID();
+
+        when(userRepository.findById(adminId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.reject(adminId, UUID.randomUUID(), "reason")
+        );
+
+        assertEquals("Admin user not found", exception.getMessage());
+    }
+
+    @Test
+    void reject_rejects_inactive_admin() {
+        User inactiveAdmin = new User(
+                UUID.randomUUID(),
+                "Inactive",
+                "Admin",
+                "inactive-admin@example.com",
+                "hash",
+                Role.ADMIN,
+                false,
+                Instant.now(),
+                Instant.now()
+        );
+
+        when(userRepository.findById(inactiveAdmin.getId())).thenReturn(Optional.of(inactiveAdmin));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.reject(inactiveAdmin.getId(), UUID.randomUUID(), "reason")
+        );
+
+        assertEquals("Admin user inactive", exception.getMessage());
+    }
+
+    @Test
+    void reject_rejects_unknown_request() {
+        User admin = createAdmin();
+        UUID requestId = UUID.randomUUID();
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRequestRepository.findById(requestId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.reject(admin.getId(), requestId, "reason")
+        );
+
+        assertEquals("Booking request not found", exception.getMessage());
+    }
+
+    @Test
+    void getAllRequests_returns_all_requests_sorted_desc_for_admin() {
+        User admin = createAdmin();
+        User requester = createRepresentative();
+        Hall hall = createPartHallA();
+
+        BookingRequest oldest = new BookingRequest(
+                UUID.randomUUID(),
+                "Old",
+                "desc",
+                LocalDateTime.of(2026, 4, 30, 10, 0),
+                LocalDateTime.of(2026, 4, 30, 11, 0),
+                BookingRequestStatus.PENDING,
+                null,
+                hall,
+                requester,
+                null,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Instant.parse("2026-01-01T00:00:00Z"),
+                null
+        );
+        BookingRequest middle = new BookingRequest(
+                UUID.randomUUID(),
+                "Middle",
+                "desc",
+                LocalDateTime.of(2026, 5, 1, 10, 0),
+                LocalDateTime.of(2026, 5, 1, 11, 0),
+                BookingRequestStatus.PENDING,
+                null,
+                hall,
+                requester,
+                null,
+                Instant.parse("2026-02-01T00:00:00Z"),
+                Instant.parse("2026-02-01T00:00:00Z"),
+                null
+        );
+        BookingRequest newest = new BookingRequest(
+                UUID.randomUUID(),
+                "New",
+                "desc",
+                LocalDateTime.of(2026, 5, 2, 10, 0),
+                LocalDateTime.of(2026, 5, 2, 11, 0),
+                BookingRequestStatus.PENDING,
+                null,
+                hall,
+                requester,
+                null,
+                Instant.parse("2026-03-01T00:00:00Z"),
+                Instant.parse("2026-03-01T00:00:00Z"),
+                null
+        );
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRequestRepository.findAll()).thenReturn(List.of(middle, newest, oldest));
+
+        List<BookingRequest> result = service.getAllRequests(admin.getId());
+
+        assertEquals(List.of(newest.getId(), middle.getId(), oldest.getId()), result.stream().map(BookingRequest::getId).toList());
+    }
+
+    @Test
+    void getAllRequests_rejects_non_admin() {
+        User rep = createRepresentative();
+
+        when(userRepository.findById(rep.getId())).thenReturn(Optional.of(rep));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.getAllRequests(rep.getId())
+        );
+
+        assertEquals("User not allowed to view all booking requests", exception.getMessage());
+    }
+
+    @Test
+    void getAllRequests_rejects_inactive_admin() {
+        User inactiveAdmin = new User(
+                UUID.randomUUID(),
+                "Inactive",
+                "Admin",
+                "inactive-admin@example.com",
+                "hash",
+                Role.ADMIN,
+                false,
+                Instant.now(),
+                Instant.now()
+        );
+
+        when(userRepository.findById(inactiveAdmin.getId())).thenReturn(Optional.of(inactiveAdmin));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.getAllRequests(inactiveAdmin.getId())
+        );
+
+        assertEquals("Admin user inactive", exception.getMessage());
+    }
+
+    @Test
+    void getAllRequests_rejects_unknown_admin() {
+        UUID adminId = UUID.randomUUID();
+
+        when(userRepository.findById(adminId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.getAllRequests(adminId)
+        );
+
+        assertEquals("Admin user not found", exception.getMessage());
+    }
+
+    @Test
+    void getOpenRequests_rejects_non_admin() {
+        User rep = createRepresentative();
+
+        when(userRepository.findById(rep.getId())).thenReturn(Optional.of(rep));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.getOpenRequests(rep.getId())
+        );
+
+        assertEquals("User not allowed to view open booking requests", exception.getMessage());
+    }
+
+    @Test
+    void getOpenRequests_rejects_inactive_admin() {
+        User inactiveAdmin = new User(
+                UUID.randomUUID(),
+                "Inactive",
+                "Admin",
+                "inactive-admin@example.com",
+                "hash",
+                Role.ADMIN,
+                false,
+                Instant.now(),
+                Instant.now()
+        );
+
+        when(userRepository.findById(inactiveAdmin.getId())).thenReturn(Optional.of(inactiveAdmin));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.getOpenRequests(inactiveAdmin.getId())
+        );
+
+        assertEquals("Admin user inactive", exception.getMessage());
+    }
+
+    @Test
+    void getOpenRequests_rejects_unknown_admin() {
+        UUID adminId = UUID.randomUUID();
+
+        when(userRepository.findById(adminId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.getOpenRequests(adminId)
+        );
+
+        assertEquals("Admin user not found", exception.getMessage());
+    }
+
+    @Test
+    void getOpenRequests_sorts_pending_requests_descending() {
+        User admin = createAdmin();
+        User requester = createRepresentative();
+        Hall hall = createPartHallA();
+
+        BookingRequest oldest = new BookingRequest(
+                UUID.randomUUID(),
+                "Old",
+                "desc",
+                LocalDateTime.of(2026, 4, 30, 10, 0),
+                LocalDateTime.of(2026, 4, 30, 11, 0),
+                BookingRequestStatus.PENDING,
+                null,
+                hall,
+                requester,
+                null,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Instant.parse("2026-01-01T00:00:00Z"),
+                null
+        );
+        BookingRequest middle = new BookingRequest(
+                UUID.randomUUID(),
+                "Middle",
+                "desc",
+                LocalDateTime.of(2026, 5, 1, 10, 0),
+                LocalDateTime.of(2026, 5, 1, 11, 0),
+                BookingRequestStatus.PENDING,
+                null,
+                hall,
+                requester,
+                null,
+                Instant.parse("2026-02-01T00:00:00Z"),
+                Instant.parse("2026-02-01T00:00:00Z"),
+                null
+        );
+        BookingRequest newest = new BookingRequest(
+                UUID.randomUUID(),
+                "New",
+                "desc",
+                LocalDateTime.of(2026, 5, 2, 10, 0),
+                LocalDateTime.of(2026, 5, 2, 11, 0),
+                BookingRequestStatus.PENDING,
+                null,
+                hall,
+                requester,
+                null,
+                Instant.parse("2026-03-01T00:00:00Z"),
+                Instant.parse("2026-03-01T00:00:00Z"),
+                null
+        );
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRequestRepository.findByStatus(BookingRequestStatus.PENDING)).thenReturn(List.of(oldest, newest, middle));
+
+        List<BookingRequest> result = service.getOpenRequests(admin.getId());
+
+        assertEquals(List.of(newest.getId(), middle.getId(), oldest.getId()), result.stream().map(BookingRequest::getId).toList());
+    }
+
+    @Test
+    void getRequestsByUser_rejects_unknown_user() {
+        UUID userId = UUID.randomUUID();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.getRequestsByUser(userId)
+        );
+
+        assertEquals("User not found", exception.getMessage());
+    }
+
+    @Test
+    void getRequestsByUser_rejects_inactive_user() {
+        User inactiveUser = createInactiveRepresentative();
+
+        when(userRepository.findById(inactiveUser.getId())).thenReturn(Optional.of(inactiveUser));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.getRequestsByUser(inactiveUser.getId())
+        );
+
+        assertEquals("User inactive", exception.getMessage());
+    }
+
+    @Test
+    void getById_rejects_unknown_user() {
+        UUID userId = UUID.randomUUID();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.getById(userId, UUID.randomUUID())
+        );
+
+        assertEquals("User not found", exception.getMessage());
+    }
+
+    @Test
+    void getById_rejects_inactive_user() {
+        User inactiveUser = createInactiveRepresentative();
+
+        when(userRepository.findById(inactiveUser.getId())).thenReturn(Optional.of(inactiveUser));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> service.getById(inactiveUser.getId(), UUID.randomUUID())
+        );
+
+        assertEquals("User inactive", exception.getMessage());
+    }
+
+    @Test
+    void getById_rejects_unknown_request() {
+        User user = createRepresentative();
+        UUID requestId = UUID.randomUUID();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(bookingRequestRepository.findById(requestId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> service.getById(user.getId(), requestId)
+        );
+
+        assertEquals("Booking request not found", exception.getMessage());
+    }
 }

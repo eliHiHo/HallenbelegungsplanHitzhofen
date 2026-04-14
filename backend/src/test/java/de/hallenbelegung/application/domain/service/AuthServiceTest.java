@@ -25,6 +25,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class AuthServiceTest {
 
@@ -893,5 +900,258 @@ public class AuthServiceTest {
         assertEquals("hashed:newpassword", updatedUser.getPasswordHash());
         assertEquals("reset-token", resetPort.invalidatedToken);
         assertEquals(user.getId(), sessionPort.invalidatedSessionsForUserId);
+    }
+
+    @Test
+    void login_rejects_null_email() {
+        AuthService service = createService(
+                new InMemoryUserRepo(),
+                new ConfigurablePasswordVerifier(true),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                new CapturingLoginRateLimitPort()
+        );
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> service.login(null, "pass"));
+
+        assertEquals("Email is required", exception.getMessage());
+    }
+
+    @Test
+    void login_rejects_blank_email() {
+        AuthService service = createService(
+                new InMemoryUserRepo(),
+                new ConfigurablePasswordVerifier(true),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                new CapturingLoginRateLimitPort()
+        );
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> service.login("   ", "pass"));
+
+        assertEquals("Email is required", exception.getMessage());
+    }
+
+    @Test
+    void login_rejects_invalid_email_starting_with_at() {
+        AuthService service = createService(
+                new InMemoryUserRepo(),
+                new ConfigurablePasswordVerifier(true),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                new CapturingLoginRateLimitPort()
+        );
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> service.login("@domain.de", "pass"));
+
+        assertEquals("Email is invalid", exception.getMessage());
+    }
+
+    @Test
+    void login_rejects_invalid_email_ending_with_at() {
+        AuthService service = createService(
+                new InMemoryUserRepo(),
+                new ConfigurablePasswordVerifier(true),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                new CapturingLoginRateLimitPort()
+        );
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> service.login("user@", "pass"));
+
+        assertEquals("Email is invalid", exception.getMessage());
+    }
+
+    @Test
+    void login_rejects_null_password() {
+        AuthService service = createService(
+                new InMemoryUserRepo(),
+                new ConfigurablePasswordVerifier(true),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                new CapturingLoginRateLimitPort()
+        );
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> service.login("user@example.com", null));
+
+        assertEquals("Password is required", exception.getMessage());
+    }
+
+    @Test
+    void login_rejects_blank_password() {
+        AuthService service = createService(
+                new InMemoryUserRepo(),
+                new ConfigurablePasswordVerifier(true),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                new CapturingLoginRateLimitPort()
+        );
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> service.login("user@example.com", "  "));
+
+        assertEquals("Password is required", exception.getMessage());
+    }
+
+    @Test
+    void login_records_failed_login_on_unknown_email() {
+        InMemoryUserRepo userRepo = new InMemoryUserRepo();
+        CapturingLoginRateLimitPort rateLimitPort = new CapturingLoginRateLimitPort();
+
+        AuthService service = createService(
+                userRepo,
+                new ConfigurablePasswordVerifier(true),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                rateLimitPort
+        );
+
+        assertThrows(ValidationException.class, () -> service.login("Unknown@Example.com", "wrong"));
+
+        assertEquals("unknown@example.com", rateLimitPort.failedLoginKey);
+    }
+
+    @Test
+    void login_records_failed_login_on_wrong_password() {
+        InMemoryUserRepo userRepo = new InMemoryUserRepo();
+        createAndSaveActiveUser(userRepo, "john@example.com");
+        CapturingLoginRateLimitPort rateLimitPort = new CapturingLoginRateLimitPort();
+
+        AuthService service = createService(
+                userRepo,
+                new ConfigurablePasswordVerifier(false),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                rateLimitPort
+        );
+
+        assertThrows(ValidationException.class, () -> service.login("JOHN@EXAMPLE.COM", "wrong"));
+
+        assertEquals("john@example.com", rateLimitPort.failedLoginKey);
+    }
+
+    @Test
+    void login_invalidates_existing_sessions_before_creating_new_session() {
+        UserRepositoryPort userRepo = mock(UserRepositoryPort.class);
+        PasswordVerificationPort passwordVerifier = mock(PasswordVerificationPort.class);
+        PasswordHashingPort hashingPort = mock(PasswordHashingPort.class);
+        SessionPort sessionPort = mock(SessionPort.class);
+        PasswordResetPort resetPort = mock(PasswordResetPort.class);
+        PasswordResetMailPort mailPort = mock(PasswordResetMailPort.class);
+        LoginRateLimitPort rateLimitPort = mock(LoginRateLimitPort.class);
+
+        User user = User.createNew("John", "Doe", "john@example.com", "stored-hash", Role.ADMIN);
+        when(userRepo.findByEmail("john@example.com")).thenReturn(Optional.of(user));
+        when(passwordVerifier.matches("secret123", "stored-hash")).thenReturn(true);
+        when(sessionPort.createSession(eq(user), any(Duration.class))).thenReturn("session-token");
+
+        AuthService service = new AuthService(
+                userRepo,
+                passwordVerifier,
+                hashingPort,
+                sessionPort,
+                resetPort,
+                mailPort,
+                rateLimitPort
+        );
+
+        service.login("john@example.com", "secret123");
+
+        org.mockito.InOrder inOrder = inOrder(sessionPort);
+        inOrder.verify(sessionPort).invalidateSessionsByUserId(user.getId());
+        inOrder.verify(sessionPort).createSession(eq(user), any(Duration.class));
+    }
+
+    @Test
+    void forgotPassword_invalidates_existing_tokens_before_creating_new_one() {
+        UserRepositoryPort userRepo = mock(UserRepositoryPort.class);
+        PasswordVerificationPort passwordVerifier = mock(PasswordVerificationPort.class);
+        PasswordHashingPort hashingPort = mock(PasswordHashingPort.class);
+        SessionPort sessionPort = mock(SessionPort.class);
+        PasswordResetPort resetPort = mock(PasswordResetPort.class);
+        PasswordResetMailPort mailPort = mock(PasswordResetMailPort.class);
+        LoginRateLimitPort rateLimitPort = mock(LoginRateLimitPort.class);
+
+        User user = User.createNew("John", "Doe", "john@example.com", "stored-hash", Role.ADMIN);
+        when(userRepo.findByEmail("john@example.com")).thenReturn(Optional.of(user));
+        when(resetPort.createToken(eq(user.getId()), any(Duration.class))).thenReturn("reset-token");
+
+        AuthService service = new AuthService(
+                userRepo,
+                passwordVerifier,
+                hashingPort,
+                sessionPort,
+                resetPort,
+                mailPort,
+                rateLimitPort
+        );
+
+        service.requestPasswordReset("john@example.com");
+
+        org.mockito.InOrder inOrder = inOrder(resetPort);
+        inOrder.verify(resetPort).invalidateTokensByUserId(user.getId());
+        inOrder.verify(resetPort).createToken(eq(user.getId()), any(Duration.class));
+    }
+
+    @Test
+    void getCurrentUser_touches_session_on_successful_resolution() {
+        UserRepositoryPort userRepo = mock(UserRepositoryPort.class);
+        PasswordVerificationPort passwordVerifier = mock(PasswordVerificationPort.class);
+        PasswordHashingPort hashingPort = mock(PasswordHashingPort.class);
+        SessionPort sessionPort = mock(SessionPort.class);
+        PasswordResetPort resetPort = mock(PasswordResetPort.class);
+        PasswordResetMailPort mailPort = mock(PasswordResetMailPort.class);
+        LoginRateLimitPort rateLimitPort = mock(LoginRateLimitPort.class);
+
+        User user = User.createNew("John", "Doe", "john@example.com", "stored-hash", Role.ADMIN);
+        when(sessionPort.findActiveSession("session-123")).thenReturn(Optional.of(new SessionUserView("session-123", user.getId())));
+        when(userRepo.findById(user.getId())).thenReturn(Optional.of(user));
+
+        AuthService service = new AuthService(
+                userRepo,
+                passwordVerifier,
+                hashingPort,
+                sessionPort,
+                resetPort,
+                mailPort,
+                rateLimitPort
+        );
+
+        User result = service.getCurrentUser("session-123");
+
+        assertEquals(user.getId(), result.getId());
+        verify(sessionPort).touchSession(eq("session-123"), any(Duration.class));
+    }
+
+    @Test
+    void logout_is_noop_for_null_session() {
+        AuthService service = createService(
+                new InMemoryUserRepo(),
+                new ConfigurablePasswordVerifier(true),
+                new SimpleHash(),
+                new CapturingSessionPort(),
+                new CapturingPasswordResetPort(),
+                new CapturingMailPort(),
+                new CapturingLoginRateLimitPort()
+        );
+
+        ValidationException exception = assertThrows(ValidationException.class, () -> service.logout(null));
+
+        assertEquals("Session id is required", exception.getMessage());
     }
 }

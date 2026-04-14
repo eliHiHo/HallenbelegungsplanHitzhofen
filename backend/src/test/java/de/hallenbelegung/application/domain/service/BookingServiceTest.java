@@ -2514,5 +2514,68 @@ public class BookingServiceTest {
         assertEquals(LocalDateTime.of(2026, 4, 22, 10, 0), result.get(1).getStartAt());
         assertEquals(LocalDateTime.of(2026, 4, 20, 10, 0), result.get(2).getStartAt());
     }
+
+    @Test
+    void getBookingsByUser_returns_empty_list_when_no_bookings() {
+        User user = createRepresentative();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(bookingRepository.findByResponsibleUserId(user.getId())).thenReturn(List.of());
+
+        List<Booking> result = service.getBookingsByUser(user.getId());
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void update_sends_notification_after_successful_update() {
+        User admin = createAdmin();
+        User owner = createRepresentative();
+        Hall currentHall = createPartHallA();
+        Hall targetHall = createPartHallB();
+        Booking booking = createBookingWithId(
+                UUID.randomUUID(),
+                owner,
+                currentHall,
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 11, 0)
+        );
+
+        LocalDateTime start = LocalDateTime.of(2026, 4, 21, 14, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 4, 21, 15, 0);
+
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        when(hallRepository.findById(targetHall.getId())).thenReturn(Optional.of(targetHall));
+        when(bookingRepository.findByHallIdAndTimeRange(targetHall.getId(), start, end)).thenReturn(List.of());
+        when(bookingRepository.findByTimeRange(start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findByHallIdAndTimeRange(targetHall.getId(), start, end)).thenReturn(List.of());
+        when(blockedTimeRepository.findAllByTimeRange(start, end)).thenReturn(List.of());
+        when(bookingRepository.save(booking)).thenReturn(booking);
+
+        service.update(admin.getId(), booking.getId(), targetHall.getId(), "Updated", "desc", start, end);
+
+        verify(notificationPort, times(1)).notifyRequesterAboutBookingUpdated(any(Booking.class));
+    }
+
+    @Test
+    void cancel_owner_does_not_trigger_admin_notification() {
+        User owner = createRepresentative();
+        Hall hall = createPartHallA();
+        Booking booking = createBooking(
+                owner,
+                hall,
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 11, 0)
+        );
+
+        when(userRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(booking)).thenReturn(booking);
+
+        service.cancel(owner.getId(), booking.getId(), "reason");
+
+        verify(notificationPort, never()).notifyRequesterAboutBookingCancelledByAdmin(any(Booking.class), any());
+    }
 }
 
