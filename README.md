@@ -57,5 +57,5 @@ Technisches Pflichtenheft folgt.
 
 ## Status
 
-Projektphase: Planung  
-Next step: Pflichtenheft und Architektur.
+Projektphase: Implementierung  
+Next step: Testen/Finalisieren von dem implementierten Backend
