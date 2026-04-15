@@ -6,6 +6,7 @@ import MySeriesRequestsPage from "../pages/MySeriesRequestsPage";
 import AdminRequestsPage from "../pages/AdminRequestsPage";
 import AdminSeriesRequestsPage from "../pages/AdminSeriesRequestsPage";
 import AdminBlockedTimesPage from "../pages/AdminBlockedTimesPage";
+import AdminStatisticsPage from "../pages/AdminStatisticsPage";
 import LoginPage from "../features/auth/LoginPage";
 import ForgotPasswordPage from "../features/auth/ForgotPasswordPage";
 import ResetPasswordPage from "../features/auth/ResetPasswordPage";
@@ -39,6 +40,10 @@ export const router = createBrowserRouter([
       {
         path: "admin/blocked-times",
         element: <RequireAuth role="ADMIN"><AdminBlockedTimesPage /></RequireAuth>,
+      },
+      {
+        path: "admin/statistics",
+        element: <RequireAuth role="ADMIN"><AdminStatisticsPage /></RequireAuth>,
       },
     ],
   },

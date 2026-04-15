@@ -194,6 +194,50 @@ export interface BlockedTimeCreate {
   endDateTime: string;
 }
 
+// --- Statistics (admin only) ---
+
+export interface SeriesUsage {
+  bookingSeriesId: string;
+  title: string;
+  bookingCount: number;
+}
+
+export interface HallStatistics {
+  hallId: string;
+  hallName: string;
+  totalBookings: number;
+  cancelledBookings: number;
+  totalParticipants: number;
+  utilizationPercent: number;
+  topSeries: SeriesUsage[];
+}
+
+export interface SeriesStatistics {
+  bookingSeriesId: string;
+  title: string;
+  hallName: string;
+  totalAppointments: number;
+  conductedAppointments: number;
+  cancelledAppointments: number;
+  totalParticipants: number;
+  averageParticipants: number;
+}
+
+export interface SeriesOccurrence {
+  bookingId: string;
+  startDateTime: string;
+  endDateTime: string;
+  cancelled: boolean;
+  conducted: boolean;
+  participantCount: number | null;
+  feedbackComment: string | null;
+}
+
+export interface SeriesStatisticsDetail extends SeriesStatistics {
+  responsibleUserName: string;
+  occurrences: SeriesOccurrence[];
+}
+
 // --- Users (admin only) ---
 
 export interface User {
