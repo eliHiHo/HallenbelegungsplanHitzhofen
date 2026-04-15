@@ -23,16 +23,17 @@ export default function AppLayout() {
           </Link>
           <div className="app-nav-links">
             <Link to="/">Kalender</Link>
-            {user?.role === "ADMIN" && (
-              <>
-                {/* TODO: add admin navigation links when admin pages are implemented */}
-                <Link to="/admin/requests">Anfragen</Link>
-              </>
-            )}
             {user?.role === "CLUB_REPRESENTATIVE" && (
               <>
-                {/* TODO: add club rep navigation when request pages are implemented */}
                 <Link to="/my-requests">Meine Anfragen</Link>
+                <Link to="/my-series-requests">Meine Serien</Link>
+              </>
+            )}
+            {user?.role === "ADMIN" && (
+              <>
+                <Link to="/admin/requests">Anfragen</Link>
+                <Link to="/admin/series-requests">Serienanfragen</Link>
+                <Link to="/admin/blocked-times">Sperrzeiten</Link>
               </>
             )}
           </div>

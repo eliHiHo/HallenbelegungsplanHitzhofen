@@ -1,9 +1,15 @@
 import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./AppLayout";
 import CalendarPage from "../pages/CalendarPage";
+import MyRequestsPage from "../pages/MyRequestsPage";
+import MySeriesRequestsPage from "../pages/MySeriesRequestsPage";
+import AdminRequestsPage from "../pages/AdminRequestsPage";
+import AdminSeriesRequestsPage from "../pages/AdminSeriesRequestsPage";
+import AdminBlockedTimesPage from "../pages/AdminBlockedTimesPage";
 import LoginPage from "../features/auth/LoginPage";
 import ForgotPasswordPage from "../features/auth/ForgotPasswordPage";
 import ResetPasswordPage from "../features/auth/ResetPasswordPage";
+import RequireAuth from "../shared/lib/RequireAuth";
 
 export const router = createBrowserRouter([
   {
@@ -14,7 +20,26 @@ export const router = createBrowserRouter([
       { path: "login", element: <LoginPage /> },
       { path: "forgot-password", element: <ForgotPasswordPage /> },
       { path: "reset-password", element: <ResetPasswordPage /> },
-      // TODO: add admin and club-rep routes once those pages are implemented
+      {
+        path: "my-requests",
+        element: <RequireAuth><MyRequestsPage /></RequireAuth>,
+      },
+      {
+        path: "my-series-requests",
+        element: <RequireAuth><MySeriesRequestsPage /></RequireAuth>,
+      },
+      {
+        path: "admin/requests",
+        element: <RequireAuth role="ADMIN"><AdminRequestsPage /></RequireAuth>,
+      },
+      {
+        path: "admin/series-requests",
+        element: <RequireAuth role="ADMIN"><AdminSeriesRequestsPage /></RequireAuth>,
+      },
+      {
+        path: "admin/blocked-times",
+        element: <RequireAuth role="ADMIN"><AdminBlockedTimesPage /></RequireAuth>,
+      },
     ],
   },
 ]);

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useCalendarWeek, getWeekStart } from "../features/calendar/useCalendar";
 import { useHalls } from "../features/halls/useHalls";
 import CalendarEntryDetail from "../features/calendar/CalendarEntryDetail";
+import BookingRequestForm from "../features/bookingRequests/BookingRequestForm";
+import { useAuth } from "../features/auth/AuthContext";
 import type { CalendarEntry, Hall } from "../shared/types/api";
 
 function isoToDisplay(iso: string): string {
@@ -31,10 +33,14 @@ function groupByDate(entries: CalendarEntry[]): Record<string, CalendarEntry[]> 
 }
 
 export default function CalendarPage() {
+  const { user } = useAuth();
   const [weekStart, setWeekStart] = useState<string>(
     getWeekStart(new Date())
   );
   const [selectedEntry, setSelectedEntry] = useState<CalendarEntry | null>(null);
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  // Prefill date when club rep opens the form from the calendar nav area
+  const [requestInitialDate, setRequestInitialDate] = useState<string | undefined>(undefined);
 
   const { data: calendarWeek, isLoading: calLoading, error: calError } =
     useCalendarWeek(weekStart);
@@ -96,6 +102,17 @@ export default function CalendarPage() {
             KW {weekStart} – {calendarWeek.weekEnd}
           </span>
         )}
+        {user?.role === "CLUB_REPRESENTATIVE" && (
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setRequestInitialDate(weekStart);
+              setShowRequestForm(true);
+            }}
+          >
+            + Neue Anfrage
+          </button>
+        )}
       </div>
 
       {halls && halls.length > 0 && (
@@ -140,6 +157,14 @@ export default function CalendarPage() {
         <CalendarEntryDetail
           entry={selectedEntry}
           onClose={() => setSelectedEntry(null)}
+        />
+      )}
+
+      {showRequestForm && (
+        <BookingRequestForm
+          initialDate={requestInitialDate}
+          onClose={() => setShowRequestForm(false)}
+          onSuccess={() => setShowRequestForm(false)}
         />
       )}
     </div>

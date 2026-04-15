@@ -6,6 +6,17 @@ export type Role = "ADMIN" | "CLUB_REPRESENTATIVE";
 export type BookingStatus = "APPROVED" | "CANCELLED" | "COMPLETED";
 export type BookingSeriesStatus = "ACTIVE" | "CANCELLED";
 export type BookingRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type BookingSeriesRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+// Java DayOfWeek enum names as serialized by Jackson
+export type DayOfWeek =
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY"
+  | "SATURDAY"
+  | "SUNDAY";
 
 // CalendarEntryDTO — type field values from backend (CalendarEntry domain model)
 export type CalendarEntryType = "BOOKING" | "BLOCKED_TIME";
@@ -129,6 +140,58 @@ export interface BookingRequestCreate {
 
 export interface RejectionRequest {
   reason: string;
+}
+
+// --- Booking Series Requests ---
+
+export interface BookingSeriesRequest {
+  id: string;
+  title: string;
+  description: string;
+  weekday: DayOfWeek;
+  startTime: string; // "HH:mm:ss"
+  endTime: string;
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string;
+  hallId: string;
+  hallName: string;
+  requestedByName: string;
+  status: BookingSeriesRequestStatus;
+  rejectionReason: string | null;
+}
+
+export interface BookingSeriesRequestCreate {
+  title: string;
+  description: string;
+  weekday: DayOfWeek;
+  startTime: string; // "HH:mm:ss"
+  endTime: string;
+  startDate: string;
+  endDate: string;
+  hallId: string;
+}
+
+export interface BookingSeriesApproveResult {
+  createdBookingIds: string[];
+  skippedOccurrences: string[]; // ISO LocalDate strings
+}
+
+// --- Blocked Times (admin only) ---
+
+export interface BlockedTime {
+  id: string;
+  reason: string | null; // optional in backend
+  startDateTime: string; // ISO LocalDateTime
+  endDateTime: string;
+  hallId: string;
+  hallName: string;
+}
+
+export interface BlockedTimeCreate {
+  hallId: string;
+  reason?: string;
+  startDateTime: string; // ISO LocalDateTime "YYYY-MM-DDTHH:mm:ss"
+  endDateTime: string;
 }
 
 // --- Users (admin only) ---
