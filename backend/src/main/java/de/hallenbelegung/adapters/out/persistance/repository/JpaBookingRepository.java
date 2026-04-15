@@ -36,6 +36,7 @@ public class JpaBookingRepository implements BookingRepositoryPort {
     public Booking save(Booking booking) {
         DBBooking entity = mapper.toEntity(booking);
         DBBooking merged = em.merge(entity);
+        em.flush();
         return mapper.toDomain(merged);
     }
 

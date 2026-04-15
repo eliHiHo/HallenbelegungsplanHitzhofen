@@ -36,16 +36,16 @@ services:
 
       # Schema: 'update' creates tables on first boot; safe to leave as-is for
       # small deployments. Switch to 'validate' once schema is stable.
-      QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
+      QUARKUS_HIBERNATE_ORM_SCHEMA_MANAGEMENT_STRATEGY: update
 
       # Session cookie requires HTTPS in prod (matches app.session.cookie.secure=true)
       APP_BASE_URL: https://hallenbelegungsplan.hitzhofen.de
 
       # Mail: non-secret config (secrets come from .env)
-      APP_MAIL_ENABLED: "true"
-      APP_MAIL_FROM: noreply@hitzhofen.de
-      APP_MAIL_REPLY_TO: noreply@hitzhofen.de
-      APP_MAIL_BASE_URL: https://hallenbelegungsplan.hitzhofen.de
+      MAIL_ENABLED: "true"
+      MAIL_FROM: noreply@hitzhofen.de
+      MAIL_REPLY_TO: noreply@hitzhofen.de
+      MAIL_BASE_URL: https://hallenbelegungsplan.hitzhofen.de
       QUARKUS_MAILER_START_TLS: REQUIRED
     networks:
       - hallen-internal

@@ -16,9 +16,13 @@ import jakarta.ws.rs.ext.Provider;
 import jakarta.ws.rs.core.Context;
 
 import java.time.Instant;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Provider
 public class ApiExceptionMapper implements ExceptionMapper<Throwable> {
+
+    private static final Logger LOG = Logger.getLogger(ApiExceptionMapper.class.getName());
 
     @Context
     UriInfo uriInfo;
@@ -30,6 +34,7 @@ public class ApiExceptionMapper implements ExceptionMapper<Throwable> {
         }
 
         // Unexpected technical error -> 500
+        LOG.log(Level.SEVERE, "Unexpected error handling request", exception);
         ErrorResponseDTO body = new ErrorResponseDTO(
                 Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                 "INTERNAL_SERVER_ERROR",

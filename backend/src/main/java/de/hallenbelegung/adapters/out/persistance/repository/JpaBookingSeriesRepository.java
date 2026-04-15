@@ -28,6 +28,7 @@ public class JpaBookingSeriesRepository implements BookingSeriesRepositoryPort {
     public BookingSeries save(BookingSeries bookingSeries) {
         DBBookingSeries entity = mapper.toEntity(bookingSeries);
         DBBookingSeries merged = em.merge(entity);
+        em.flush();
         return mapper.toDomain(merged);
     }
 

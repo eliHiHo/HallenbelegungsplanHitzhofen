@@ -148,6 +148,7 @@ public class AuthResource {
                 .path("/")
                 .httpOnly(true)
                 .secure(sessionCookieSecure)
+                .sameSite(NewCookie.SameSite.LAX)
                 .build();
     }
 
@@ -157,6 +158,7 @@ public class AuthResource {
                 .path("/")
                 .httpOnly(true)
                 .secure(sessionCookieSecure)
+                .sameSite(NewCookie.SameSite.LAX)
                 .maxAge(0)
                 .build();
     }

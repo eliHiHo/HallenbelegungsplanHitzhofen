@@ -30,6 +30,7 @@ public class JpaBookingSeriesRequestRepository implements BookingSeriesRequestRe
     public BookingSeriesRequest save(BookingSeriesRequest bookingSeriesRequest) {
         DBBookingSeriesRequest entity = mapper.toEntity(bookingSeriesRequest);
         DBBookingSeriesRequest merged = em.merge(entity);
+        em.flush();
         return mapper.toDomain(merged);
     }
 
