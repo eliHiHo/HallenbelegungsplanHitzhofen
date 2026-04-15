@@ -35,6 +35,7 @@ export default function AppLayout() {
                 <Link to="/admin/series-requests">Serienanfragen</Link>
                 <Link to="/admin/blocked-times">Sperrzeiten</Link>
                 <Link to="/admin/statistics">Statistiken</Link>
+                <Link to="/admin/users">Benutzer</Link>
               </>
             )}
           </div>

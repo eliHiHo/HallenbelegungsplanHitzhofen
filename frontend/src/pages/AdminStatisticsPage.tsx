@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { statisticsApi } from "../shared/api/statistics";
+import {
+  useCancelBookingSeries,
+  useCancelSeriesOccurrence,
+} from "../features/bookingSeries/useCancelBookingSeries";
 
 function fmt(n: number, decimals = 0): string {
   return n.toLocaleString("de-DE", {
@@ -21,6 +25,42 @@ function fmtDt(iso: string): string {
 
 export default function AdminStatisticsPage() {
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
+  const [cancelSeriesConfirm, setCancelSeriesConfirm] = useState(false);
+  const [cancelOccurrenceId, setCancelOccurrenceId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  const { mutateAsync: cancelSeries, isPending: cancelingSeriesPending } =
+    useCancelBookingSeries();
+  const { mutateAsync: cancelOccurrence, isPending: cancelingOccurrencePending } =
+    useCancelSeriesOccurrence();
+
+  async function handleCancelSeries() {
+    if (!selectedSeriesId) return;
+    setActionError(null);
+    try {
+      await cancelSeries({ seriesId: selectedSeriesId });
+      setCancelSeriesConfirm(false);
+      setSelectedSeriesId(null);
+      setActionSuccess("Serie wurde storniert.");
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch {
+      setActionError("Fehler beim Stornieren der Serie.");
+    }
+  }
+
+  async function handleCancelOccurrence(bookingId: string) {
+    if (!selectedSeriesId) return;
+    setActionError(null);
+    try {
+      await cancelOccurrence({ seriesId: selectedSeriesId, bookingId });
+      setCancelOccurrenceId(null);
+      setActionSuccess("Termin wurde storniert.");
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch {
+      setActionError("Fehler beim Stornieren des Termins.");
+    }
+  }
 
   const {
     data: halls,
@@ -55,6 +95,9 @@ export default function AdminStatisticsPage() {
       <div className="page-header">
         <h1>Statistiken</h1>
       </div>
+
+      {actionSuccess && <p className="success-message">{actionSuccess}</p>}
+      {actionError && <p className="error">{actionError}</p>}
 
       {/* Hall Statistics */}
       <section>
@@ -194,6 +237,36 @@ export default function AdminStatisticsPage() {
                 <dd>{fmt(detail.averageParticipants, 1)}</dd>
               </dl>
 
+              {/* Cancel whole series */}
+              <div style={{ marginTop: "1rem" }}>
+                {!cancelSeriesConfirm ? (
+                  <button
+                    className="btn-reject"
+                    onClick={() => setCancelSeriesConfirm(true)}
+                  >
+                    Gesamte Serie stornieren
+                  </button>
+                ) : (
+                  <span className="delete-confirm">
+                    Alle zukünftigen Termine dieser Serie stornieren?{" "}
+                    <button
+                      className="btn-reject-inline"
+                      onClick={handleCancelSeries}
+                      disabled={cancelingSeriesPending}
+                    >
+                      {cancelingSeriesPending ? "…" : "Ja, stornieren"}
+                    </button>{" "}
+                    <button
+                      className="btn-link"
+                      onClick={() => setCancelSeriesConfirm(false)}
+                      disabled={cancelingSeriesPending}
+                    >
+                      Abbrechen
+                    </button>
+                  </span>
+                )}
+              </div>
+
               {detail.occurrences.length > 0 && (
                 <>
                   <h3 style={{ marginTop: "1rem" }}>Einzeltermine</h3>
@@ -206,6 +279,7 @@ export default function AdminStatisticsPage() {
                           <th>Status</th>
                           <th>Teilnehmer</th>
                           <th>Feedback</th>
+                          <th></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -215,6 +289,7 @@ export default function AdminStatisticsPage() {
                             : o.conducted
                             ? "Durchgeführt"
                             : "Geplant";
+                          const isConfirming = cancelOccurrenceId === o.bookingId;
                           return (
                             <tr key={o.bookingId}>
                               <td>{fmtDt(o.startDateTime)}</td>
@@ -226,6 +301,41 @@ export default function AdminStatisticsPage() {
                                   : "–"}
                               </td>
                               <td>{o.feedbackComment ?? "–"}</td>
+                              <td>
+                                {!o.cancelled && !isConfirming && (
+                                  <button
+                                    className="btn-link"
+                                    onClick={() =>
+                                      setCancelOccurrenceId(o.bookingId)
+                                    }
+                                  >
+                                    Stornieren
+                                  </button>
+                                )}
+                                {!o.cancelled && isConfirming && (
+                                  <span className="delete-confirm">
+                                    Sicher?{" "}
+                                    <button
+                                      className="btn-reject-inline"
+                                      onClick={() =>
+                                        handleCancelOccurrence(o.bookingId)
+                                      }
+                                      disabled={cancelingOccurrencePending}
+                                    >
+                                      {cancelingOccurrencePending ? "…" : "Ja"}
+                                    </button>{" "}
+                                    <button
+                                      className="btn-link"
+                                      onClick={() =>
+                                        setCancelOccurrenceId(null)
+                                      }
+                                      disabled={cancelingOccurrencePending}
+                                    >
+                                      Nein
+                                    </button>
+                                  </span>
+                                )}
+                              </td>
                             </tr>
                           );
                         })}

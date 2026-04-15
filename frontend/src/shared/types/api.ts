@@ -249,3 +249,50 @@ export interface User {
   role: Role;
   active: boolean;
 }
+
+// Matches CreateUserDTO on the backend
+export interface UserCreate {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: Role;
+}
+
+// Matches PUT /users/{id} — fullName and id fields are ignored by backend
+export interface UserUpdate {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: Role;
+  active: boolean;
+}
+
+// --- Booking Series ---
+
+// Matches BookingSeriesDTO on the backend
+export interface BookingSeries {
+  id: string;
+  title: string;
+  description: string;
+  weekday: DayOfWeek;
+  startTime: string; // "HH:mm:ss"
+  endTime: string;
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string;
+  hallId: string;
+  hallName: string;
+  status: BookingSeriesStatus;
+  responsibleUserName: string;
+}
+
+// --- Booking Update (admin only) ---
+
+// Matches PUT /bookings/{id} which accepts BookingRequestDTO fields
+export interface BookingUpdate {
+  hallId: string;
+  title: string;
+  description: string;
+  startDateTime: string;
+  endDateTime: string;
+}

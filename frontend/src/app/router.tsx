@@ -7,6 +7,7 @@ import AdminRequestsPage from "../pages/AdminRequestsPage";
 import AdminSeriesRequestsPage from "../pages/AdminSeriesRequestsPage";
 import AdminBlockedTimesPage from "../pages/AdminBlockedTimesPage";
 import AdminStatisticsPage from "../pages/AdminStatisticsPage";
+import AdminUsersPage from "../pages/AdminUsersPage";
 import LoginPage from "../features/auth/LoginPage";
 import ForgotPasswordPage from "../features/auth/ForgotPasswordPage";
 import ResetPasswordPage from "../features/auth/ResetPasswordPage";
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
       {
         path: "admin/statistics",
         element: <RequireAuth role="ADMIN"><AdminStatisticsPage /></RequireAuth>,
+      },
+      {
+        path: "admin/users",
+        element: <RequireAuth role="ADMIN"><AdminUsersPage /></RequireAuth>,
       },
     ],
   },

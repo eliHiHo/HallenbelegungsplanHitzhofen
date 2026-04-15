@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { Booking } from "../types/api";
+import type { Booking, BookingUpdate } from "../types/api";
 
 export interface BookingFeedbackPayload {
   participantCount?: number | null;
@@ -9,6 +9,17 @@ export interface BookingFeedbackPayload {
 export const bookingsApi = {
   get: (id: string) =>
     api.get<Booking>(`/bookings/${id}`),
+
+  // Admin-only: update title, description, hall, and time of a booking.
+  // Body matches BookingRequestDTO on the backend.
+  update: (id: string, data: BookingUpdate) =>
+    api.put<Booking>(`/bookings/${id}`, {
+      hallId: data.hallId,
+      title: data.title,
+      description: data.description,
+      startDateTime: data.startDateTime,
+      endDateTime: data.endDateTime,
+    }),
 
   // reason is optional; passed as query parameter (not body)
   cancel: (id: string, reason?: string) => {

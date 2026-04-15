@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import CancelBookingModal from "./CancelBookingModal";
 import FeedbackModal from "./FeedbackModal";
+import EditBookingModal from "./EditBookingModal";
 import type { CalendarEntry } from "../../shared/types/api";
 
 interface Props {
@@ -30,6 +31,7 @@ export default function CalendarEntryDetail({ entry, onClose }: Props) {
   const { user } = useAuth();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const isOwnBooking =
     user?.role === "CLUB_REPRESENTATIVE" &&
@@ -42,6 +44,12 @@ export default function CalendarEntryDetail({ entry, onClose }: Props) {
   // Feedback: backend only blocks cancelled bookings; canViewFeedback is
   // verified inside FeedbackModal via GET /bookings/{id}.
   const showFeedbackButton = isOwnBooking && entry.status !== "CANCELLED";
+
+  // Admin edit: canEdit is enforced by backend; backend verifies role.
+  const showEditButton =
+    user?.role === "ADMIN" &&
+    entry.type === "BOOKING" &&
+    entry.status !== "CANCELLED";
 
   function handleCancelSuccess() {
     setShowCancelModal(false);
@@ -95,7 +103,7 @@ export default function CalendarEntryDetail({ entry, onClose }: Props) {
             )}
           </dl>
 
-          {(showCancelButton || showFeedbackButton) && (
+          {(showCancelButton || showFeedbackButton || showEditButton) && (
             <div className="detail-actions">
               {showFeedbackButton && (
                 <button
@@ -103,6 +111,14 @@ export default function CalendarEntryDetail({ entry, onClose }: Props) {
                   onClick={() => setShowFeedbackModal(true)}
                 >
                   Feedback
+                </button>
+              )}
+              {showEditButton && (
+                <button
+                  className="btn-primary"
+                  onClick={() => setShowEditModal(true)}
+                >
+                  Bearbeiten
                 </button>
               )}
               {showCancelButton && (
@@ -133,6 +149,18 @@ export default function CalendarEntryDetail({ entry, onClose }: Props) {
           bookingTitle={entry.title}
           onClose={() => setShowFeedbackModal(false)}
           onSuccess={handleFeedbackSuccess}
+        />
+      )}
+
+      {showEditModal && (
+        <EditBookingModal
+          bookingId={entry.id}
+          bookingTitle={entry.title}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={() => {
+            setShowEditModal(false);
+            onClose();
+          }}
         />
       )}
     </>
