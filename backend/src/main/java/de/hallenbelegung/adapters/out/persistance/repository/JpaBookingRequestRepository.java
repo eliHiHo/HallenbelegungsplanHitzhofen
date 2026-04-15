@@ -28,6 +28,7 @@ public class JpaBookingRequestRepository implements BookingRequestRepositoryPort
     public BookingRequest save(BookingRequest bookingRequest) {
         DBBookingRequest entity = mapper.toEntity(bookingRequest);
         DBBookingRequest merged = em.merge(entity);
+        em.flush(); // required: @CreationTimestamp/@UpdateTimestamp are set during flush
         return mapper.toDomain(merged);
     }
 

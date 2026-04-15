@@ -1,58 +1,77 @@
 services:
+
   db:
     image: postgres:16
     container_name: hallen-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: hallen
       POSTGRES_USER: hallen
-      POSTGRES_PASSWORD: hallen
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - hallen_db_data:/var/lib/postgresql/data
     networks:
-      - hallen-net
+      - hallen-internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hallen"]
       interval: 5s
       timeout: 5s
       retries: 10
+    # db is NOT exposed to the host — only reachable inside hallen-internal
 
   backend:
     image: hallen-backend:latest
     container_name: hallen-backend
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+    env_file:
+      - .env                          # DB_PASSWORD, BOOTSTRAP_*, QUARKUS_MAILER_*
     environment:
-      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://db:5432/hallen
-      QUARKUS_DATASOURCE_USERNAME: hallen
-      QUARKUS_DATASOURCE_PASSWORD: hallen
-      QUARKUS_HTTP_PORT: 8080
+      # Database
+      DB_JDBC_URL: jdbc:postgresql://db:5432/hallen
+      DB_USERNAME: hallen
+      # DB_PASSWORD comes from .env
+
+      # Schema: 'update' creates tables on first boot; safe to leave as-is for
+      # small deployments. Switch to 'validate' once schema is stable.
+      QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
+
+      # Session cookie requires HTTPS in prod (matches app.session.cookie.secure=true)
       APP_BASE_URL: https://hallenbelegungsplan.hitzhofen.de
-      QUARKUS_MAILER_HOST: smtp.yourprovider.de
-      QUARKUS_MAILER_PORT: "587"
-      QUARKUS_MAILER_USERNAME: noreply@hitzhofen.de
-      QUARKUS_MAILER_PASSWORD: DEIN_PASSWORT
-      QUARKUS_MAILER_FROM: noreply@hitzhofen.de
+
+      # Mail: non-secret config (secrets come from .env)
+      APP_MAIL_ENABLED: "true"
+      APP_MAIL_FROM: noreply@hitzhofen.de
+      APP_MAIL_REPLY_TO: noreply@hitzhofen.de
+      APP_MAIL_BASE_URL: https://hallenbelegungsplan.hitzhofen.de
+      QUARKUS_MAILER_START_TLS: REQUIRED
     networks:
-      - hallen-net
+      - hallen-internal
+    # backend has NO ports exposed to the host — only Caddy can reach it
 
   caddy:
     image: caddy:2
     container_name: hallen-caddy
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ../frontend/dist:/srv/frontend:ro
+      - caddy_data:/data       # TLS certificates (persisted across restarts)
+      - caddy_config:/config
     networks:
-      - hallen-net
+      - hallen-internal
+    depends_on:
+      - backend
 
 networks:
-  hallen-net:
+  hallen-internal:
     driver: bridge
+    # Not exposed externally; only Caddy has public ports
 
 volumes:
   hallen_db_data:

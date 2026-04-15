@@ -1,0 +1,17 @@
+# Replace with your actual domain or use :80 for HTTP-only testing
+hallenbelegungsplan.hitzhofen.de {
+
+    # /api/* → Quarkus backend (prefix stripped before forwarding)
+    # Browser:  GET /api/booking-requests
+    # Backend:  GET /booking-requests
+    handle_path /api/* {
+        reverse_proxy backend:8080
+    }
+
+    # Everything else → React SPA (client-side routing via index.html fallback)
+    handle {
+        root * /srv/frontend
+        try_files {path} /index.html
+        file_server
+    }
+}

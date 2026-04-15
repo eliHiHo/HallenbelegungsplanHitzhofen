@@ -28,6 +28,7 @@ public class JpaBlockedTimeRepository implements BlockedTimeRepositoryPort {
     public BlockedTime save(BlockedTime blockedTime) {
         DBBlockedTime entity = mapper.toEntity(blockedTime);
         DBBlockedTime merged = em.merge(entity);
+        em.flush(); // required: @CreationTimestamp/@UpdateTimestamp are set during flush
         return mapper.toDomain(merged);
     }
 
