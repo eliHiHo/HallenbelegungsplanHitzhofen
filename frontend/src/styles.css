@@ -1,0 +1,327 @@
+/* Minimal global styles — design polish is deferred */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #111;
+  background: #f5f5f5;
+}
+
+a {
+  color: #0066cc;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header / Nav */
+.app-header {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 0 1rem;
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  height: 3rem;
+}
+
+.app-nav-brand {
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-nav-links {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+}
+
+.app-nav-links a {
+  color: #ccc;
+  text-decoration: none;
+}
+
+.app-nav-links a:hover {
+  color: #fff;
+}
+
+.app-nav-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.app-nav-user button {
+  background: none;
+  border: 1px solid #ccc;
+  color: #ccc;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.app-main {
+  flex: 1;
+  padding: 1.5rem 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Auth pages */
+.login-page,
+.forgot-password-page,
+.reset-password-page {
+  max-width: 400px;
+  margin: 4rem auto;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.login-page h1,
+.forgot-password-page h1,
+.reset-password-page h1 {
+  margin: 0 0 1.5rem;
+  font-size: 1.5rem;
+}
+
+.login-page form,
+.forgot-password-page form,
+.reset-password-page form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.login-page label,
+.forgot-password-page label,
+.reset-password-page label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.login-page input,
+.forgot-password-page input,
+.reset-password-page input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.login-page button[type="submit"],
+.forgot-password-page button[type="submit"],
+.reset-password-page button[type="submit"] {
+  background: #0066cc;
+  color: #fff;
+  border: none;
+  padding: 0.625rem 1rem;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.login-page button[type="submit"]:disabled,
+.forgot-password-page button[type="submit"]:disabled,
+.reset-password-page button[type="submit"]:disabled {
+  opacity: 0.6;
+}
+
+.error {
+  color: #c0392b;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Calendar page */
+.calendar-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.calendar-nav button {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.calendar-week-label {
+  font-size: 0.875rem;
+  color: #555;
+}
+
+.hall-legend {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hall-badge {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.calendar-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day-column {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.calendar-day-header {
+  background: #f9fafb;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.calendar-day-empty {
+  padding: 0.5rem;
+  text-align: center;
+  color: #aaa;
+  font-size: 0.8rem;
+}
+
+.calendar-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  background: #f0f9ff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.calendar-entry:hover {
+  background: #e0f2fe;
+}
+
+.calendar-entry--blocked_time {
+  background: #fef3c7;
+}
+
+.calendar-entry--blocked_time:hover {
+  background: #fde68a;
+}
+
+.entry-time {
+  font-size: 0.7rem;
+  color: #555;
+}
+
+.entry-title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-hall {
+  font-size: 0.7rem;
+  color: #777;
+}
+
+/* Entry detail overlay */
+.entry-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.entry-detail-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 480px;
+  width: 90%;
+  position: relative;
+}
+
+.entry-detail-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: #555;
+}
+
+.entry-detail-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.2rem;
+}
+
+.entry-detail-panel dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.entry-detail-panel dt {
+  font-weight: 600;
+  color: #555;
+}
+
+.entry-detail-panel dd {
+  margin: 0;
+}
+
+/* Loading / error states */
+.calendar-loading,
+.calendar-error,
+.app-loading {
+  padding: 2rem;
+  text-align: center;
+  color: #555;
+}
