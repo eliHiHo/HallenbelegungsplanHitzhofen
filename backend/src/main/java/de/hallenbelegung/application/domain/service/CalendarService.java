@@ -169,6 +169,8 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
         boolean ownEntry = currentUser != null
                 && booking.getResponsibleUser().getId().equals(currentUser.getId());
 
+        UUID seriesId = booking.getBookingSeries() != null ? booking.getBookingSeries().getId() : null;
+
         return new CalendarEntryView(
                 booking.getId(),
                 CalendarEntryType.BOOKING,
@@ -180,7 +182,8 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 booking.getHall().getName(),
                 booking.getResponsibleUser().getFullName(),
                 booking.getStatus().name(),
-                ownEntry
+                ownEntry,
+                seriesId
         );
     }
 
@@ -196,7 +199,8 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 blockedTime.getHall().getName(),
                 null,
                 "BLOCKED",
-                false
+                false,
+                null
         );
     }
 
@@ -215,7 +219,8 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 request.getHall().getName(),
                 request.getRequestedBy().getFullName(),
                 request.getStatus().name(),
-                ownEntry
+                ownEntry,
+                null
         );
     }
 
@@ -238,7 +243,8 @@ public class CalendarService implements GetCalendarWeekUseCase, GetCalendarDayUs
                 request.getHall().getName(),
                 request.getRequestedBy().getFullName(),
                 request.getStatus().name(),
-                ownEntry
+                ownEntry,
+                null
         );
     }
 

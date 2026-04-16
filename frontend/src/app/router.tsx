@@ -8,6 +8,7 @@ import AdminSeriesRequestsPage from "../pages/AdminSeriesRequestsPage";
 import AdminBlockedTimesPage from "../pages/AdminBlockedTimesPage";
 import AdminStatisticsPage from "../pages/AdminStatisticsPage";
 import AdminUsersPage from "../pages/AdminUsersPage";
+import MyStatisticsPage from "../pages/MyStatisticsPage";
 import LoginPage from "../features/auth/LoginPage";
 import ForgotPasswordPage from "../features/auth/ForgotPasswordPage";
 import ResetPasswordPage from "../features/auth/ResetPasswordPage";
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
       {
         path: "my-series-requests",
         element: <RequireAuth><MySeriesRequestsPage /></RequireAuth>,
+      },
+      {
+        path: "my-statistics",
+        element: <RequireAuth role="CLUB_REPRESENTATIVE"><MyStatisticsPage /></RequireAuth>,
       },
       {
         path: "admin/requests",

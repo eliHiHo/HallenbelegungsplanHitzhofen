@@ -83,6 +83,7 @@ export interface CalendarEntry {
   responsibleUserName: string;
   status: BookingStatus | null; // null for BLOCKED_TIME entries
   ownEntry: boolean;
+  bookingSeriesId: string | null; // only set for BOOKING entries that belong to a series
 }
 
 export interface CalendarWeek {

@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useCalendarWeek, getWeekStart } from "../features/calendar/useCalendar";
 import { useHalls } from "../features/halls/useHalls";
+import { bookingRequestsApi } from "../shared/api/bookingRequests";
 import CalendarEntryDetail from "../features/calendar/CalendarEntryDetail";
 import BookingRequestForm from "../features/bookingRequests/BookingRequestForm";
 import { useAuth } from "../features/auth/AuthContext";
-import type { CalendarEntry, Hall } from "../shared/types/api";
+import type { CalendarEntry, BookingRequest, Hall } from "../shared/types/api";
 
 function isoToDisplay(iso: string): string {
   return new Date(iso).toLocaleDateString("de-DE", {
@@ -32,6 +34,22 @@ function groupByDate(entries: CalendarEntry[]): Record<string, CalendarEntry[]> 
   return groups;
 }
 
+function groupRequestsByDate(
+  requests: BookingRequest[],
+  weekDates: string[]
+): Record<string, BookingRequest[]> {
+  const dateSet = new Set(weekDates);
+  const groups: Record<string, BookingRequest[]> = {};
+  for (const req of requests) {
+    if (req.status !== "PENDING") continue;
+    const date = req.startDateTime.split("T")[0];
+    if (!dateSet.has(date)) continue;
+    if (!groups[date]) groups[date] = [];
+    groups[date].push(req);
+  }
+  return groups;
+}
+
 export default function CalendarPage() {
   const { user } = useAuth();
   const [weekStart, setWeekStart] = useState<string>(
@@ -45,6 +63,14 @@ export default function CalendarPage() {
   const { data: calendarWeek, isLoading: calLoading, error: calError } =
     useCalendarWeek(weekStart);
   const { data: halls, isLoading: hallsLoading } = useHalls();
+
+  // For club reps: fetch own pending requests to overlay in calendar
+  const isClubRep = user?.role === "CLUB_REPRESENTATIVE";
+  const { data: allRequests } = useQuery({
+    queryKey: ["booking-requests"],
+    queryFn: bookingRequestsApi.list,
+    enabled: isClubRep,
+  });
 
   function prevWeek() {
     const d = new Date(weekStart);
@@ -91,6 +117,10 @@ export default function CalendarPage() {
     }
   }
 
+  const groupedRequests = isClubRep && allRequests
+    ? groupRequestsByDate(allRequests, weekDates)
+    : {};
+
   return (
     <div className="calendar-page">
       <div className="calendar-nav">
@@ -115,6 +145,17 @@ export default function CalendarPage() {
         )}
       </div>
 
+      {/* Color legend */}
+      <div className="calendar-legend">
+        <span className="calendar-legend-item calendar-legend-item--booking">Buchungen</span>
+        <span className="calendar-legend-item calendar-legend-item--own">Eigene Termine</span>
+        {isClubRep && (
+          <span className="calendar-legend-item calendar-legend-item--request">Anfragen (ausstehend)</span>
+        )}
+        <span className="calendar-legend-item calendar-legend-item--cancelled">Storniert</span>
+        <span className="calendar-legend-item calendar-legend-item--blocked">Sperrzeiten</span>
+      </div>
+
       {halls && halls.length > 0 && (
         <div className="hall-legend">
           {halls.map((h) => (
@@ -128,25 +169,47 @@ export default function CalendarPage() {
       <div className="calendar-week-grid">
         {weekDates.map((date) => {
           const entries = grouped[date] ?? [];
+          const requests = groupedRequests[date] ?? [];
+          const hasContent = entries.length > 0 || requests.length > 0;
           return (
             <div key={date} className="calendar-day-column">
               <div className="calendar-day-header">{isoToDisplay(date)}</div>
-              {entries.length === 0 ? (
+              {!hasContent ? (
                 <div className="calendar-day-empty">–</div>
               ) : (
-                entries.map((entry) => (
-                  <button
-                    key={entry.id}
-                    className={`calendar-entry calendar-entry--${entry.type.toLowerCase()}`}
-                    onClick={() => setSelectedEntry(entry)}
-                  >
-                    <span className="entry-time">
-                      {timeLabel(entry.startDateTime)}–{timeLabel(entry.endDateTime)}
-                    </span>
-                    <span className="entry-title">{entry.title}</span>
-                    <span className="entry-hall">{entry.hallName}</span>
-                  </button>
-                ))
+                <>
+                  {entries.map((entry) => (
+                    <button
+                      key={entry.id}
+                      className={[
+                        "calendar-entry",
+                        entry.status === "CANCELLED"
+                          ? "calendar-entry--cancelled"
+                          : entry.ownEntry
+                          ? "calendar-entry--own"
+                          : entry.type === "BLOCKED_TIME"
+                          ? "calendar-entry--blocked_time"
+                          : "calendar-entry--booking",
+                      ].join(" ")}
+                      onClick={() => setSelectedEntry(entry)}
+                    >
+                      <span className="entry-time">
+                        {timeLabel(entry.startDateTime)}–{timeLabel(entry.endDateTime)}
+                      </span>
+                      <span className="entry-title">{entry.title}</span>
+                      <span className="entry-hall">{entry.hallName}</span>
+                    </button>
+                  ))}
+                  {requests.map((req) => (
+                    <div key={req.id} className="calendar-entry calendar-entry--request">
+                      <span className="entry-time">
+                        {timeLabel(req.startDateTime)}–{timeLabel(req.endDateTime)}
+                      </span>
+                      <span className="entry-title">{req.title}</span>
+                      <span className="entry-hall">{req.hallName}</span>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           );

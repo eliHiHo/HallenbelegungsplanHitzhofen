@@ -37,6 +37,7 @@ public class JpaBookingRepository implements BookingRepositoryPort {
         DBBooking entity = mapper.toEntity(booking);
         DBBooking merged = em.merge(entity);
         em.flush();
+        em.refresh(merged); // WICHTIG: @CreationTimestamp-Feld ist nach merge null; refresh stellt DB-Wert wieder her
         return mapper.toDomain(merged);
     }
 

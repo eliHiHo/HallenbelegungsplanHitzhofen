@@ -34,12 +34,14 @@ export default function CalendarEntryDetail({ entry, onClose }: Props) {
   const [showEditModal, setShowEditModal] = useState(false);
 
   const isOwnBooking =
-    user?.role === "CLUB_REPRESENTATIVE" &&
     entry.type === "BOOKING" &&
     entry.ownEntry;
 
-  // Cancel: only for non-cancelled own bookings
-  const showCancelButton = isOwnBooking && entry.status !== "CANCELLED";
+  // Cancel: eigene nicht-stornierte Buchungen ODER Admin auf beliebiger nicht-stornierter Buchung
+  const showCancelButton =
+    entry.type === "BOOKING" &&
+    entry.status !== "CANCELLED" &&
+    (isOwnBooking || user?.role === "ADMIN");
 
   // Feedback: backend only blocks cancelled bookings; canViewFeedback is
   // verified inside FeedbackModal via GET /bookings/{id}.
@@ -138,6 +140,7 @@ export default function CalendarEntryDetail({ entry, onClose }: Props) {
         <CancelBookingModal
           bookingId={entry.id}
           bookingTitle={entry.title}
+          bookingSeriesId={entry.bookingSeriesId}
           onClose={() => setShowCancelModal(false)}
           onSuccess={handleCancelSuccess}
         />

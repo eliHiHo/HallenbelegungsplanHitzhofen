@@ -14,6 +14,7 @@ public record CalendarEntryView(
         String hallName,
         String responsibleUserName,
         String status,
-        boolean ownEntry
+        boolean ownEntry,
+        UUID bookingSeriesId  // null für nicht-serien-Buchungen, BLOCKED_TIME und Anfragen
 ) {
 }

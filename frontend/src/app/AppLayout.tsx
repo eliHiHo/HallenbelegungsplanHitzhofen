@@ -27,6 +27,7 @@ export default function AppLayout() {
               <>
                 <Link to="/my-requests">Meine Anfragen</Link>
                 <Link to="/my-series-requests">Meine Serien</Link>
+                <Link to="/my-statistics">Statistiken</Link>
               </>
             )}
             {user?.role === "ADMIN" && (

@@ -38,7 +38,8 @@ public class CalendarApiMapper {
                 e.hallName(),
                 e.responsibleUserName(),
                 e.status(),
-                e.ownEntry()
+                e.ownEntry(),
+                e.bookingSeriesId()
         );
     }
 }

@@ -14,6 +14,7 @@ public record CalendarEntryDTO(
         String hallName,
         String responsibleUserName,
         String status,
-        boolean ownEntry
+        boolean ownEntry,
+        UUID bookingSeriesId  // null wenn keine Serie
 ) {
 }

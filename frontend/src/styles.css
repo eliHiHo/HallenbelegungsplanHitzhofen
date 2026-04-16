@@ -167,7 +167,7 @@ button {
   gap: 0.75rem;
 }
 
-.calendar-nav button {
+.calendar-nav button:not(.btn-primary) {
   padding: 0.375rem 0.75rem;
   border: 1px solid #ccc;
   background: #fff;
@@ -222,6 +222,38 @@ button {
   font-size: 0.8rem;
 }
 
+/* Calendar color legend */
+.calendar-legend {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.calendar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #444;
+}
+
+.calendar-legend-item::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.calendar-legend-item--booking::before { background: #f0f9ff; border: 1px solid #bae6fd; }
+.calendar-legend-item--own::before     { background: #dcfce7; border-left: 3px solid #16a34a; }
+.calendar-legend-item--request::before { background: #fef9c3; border: 1px dashed #ca8a04; }
+.calendar-legend-item--cancelled::before { background: #f3f4f6; border: 1px solid #d1d5db; }
+.calendar-legend-item--blocked::before { background: #fee2e2; border: 1px solid #fca5a5; }
+
+/* Base entry style — shared by button and div variants */
 .calendar-entry {
   display: flex;
   flex-direction: column;
@@ -230,21 +262,65 @@ button {
   padding: 0.4rem 0.5rem;
   border: none;
   border-bottom: 1px solid #f0f0f0;
-  background: #f0f9ff;
   text-align: left;
   cursor: pointer;
 }
 
-.calendar-entry:hover {
+/* Regular booking (other clubs) */
+.calendar-entry--booking {
+  background: #f0f9ff;
+}
+
+.calendar-entry--booking:hover {
   background: #e0f2fe;
 }
 
+/* Own approved booking — green left border */
+.calendar-entry--own {
+  background: #dcfce7;
+  border-left: 3px solid #16a34a;
+}
+
+.calendar-entry--own:hover {
+  background: #bbf7d0;
+}
+
+/* Pending request — dashed amber border */
+.calendar-entry--request {
+  background: #fef9c3;
+  border-left: 3px dashed #ca8a04;
+  cursor: default;
+}
+
+/* Blocked time — red/pink */
 .calendar-entry--blocked_time {
-  background: #fef3c7;
+  background: #fee2e2;
 }
 
 .calendar-entry--blocked_time:hover {
-  background: #fde68a;
+  background: #fecaca;
+}
+
+/* Cancelled — always grey, always overrides other colors */
+.calendar-entry--cancelled {
+  background: #f3f4f6 !important;
+  border-left: none !important;
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.calendar-entry--cancelled:hover {
+  background: #e5e7eb !important;
+}
+
+.calendar-entry--cancelled .entry-title {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.calendar-entry--cancelled .entry-time,
+.calendar-entry--cancelled .entry-hall {
+  color: #d1d5db;
 }
 
 .entry-time {
