@@ -193,6 +193,10 @@ button {
   font-size: 0.8rem;
 }
 
+/* Optionale Farbakzente je Hallentyp */
+.hall-badge--part_small { background: #dbeafe; color: #1e40af; }
+.hall-badge--part_large { background: #ede9fe; color: #5b21b6; }
+
 .calendar-week-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -220,6 +224,49 @@ button {
   text-align: center;
   color: #aaa;
   font-size: 0.8rem;
+}
+
+/* ── Tages-Body: 2-Spalten-Grid für Teilhallen ────────────────────────────── */
+
+/* 2-Spalten-Grid: alle Einträge eines Tages werden hier platziert.
+   Gesamthalle-Einträge  → gridColumn: 1 / span 2
+   Teilhalle-A-Einträge  → gridColumn: 1
+   Teilhalle-B-Einträge  → gridColumn: 2              */
+.calendar-day-body {
+  display: grid;
+  /* minmax(0, 1fr) verhindert, dass Inhalte die Spaltenbreite auseinanderziehen */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-auto-flow: row;
+  align-items: start;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Alle direkten Grid-Items bekommen min-width: 0,
+   damit Buttons und Text nicht über ihre Zelle hinauswachsen */
+.calendar-day-body > * {
+  min-width: 0;
+}
+
+/* Fallback ohne Teilhallen: einfache einspaltiger Block */
+.calendar-day-single {
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Kompakte Spalten-Köpfe "A" / "B" — erste zwei Grid-Items */
+.cal-col-label {
+  background: #f0f0f5;
+  padding: 0.15rem 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #888;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+  letter-spacing: 0.03em;
+}
+
+/* Rechter Rand auf allen Elementen in Spalte A (col 1) */
+.cal-col-a {
+  border-right: 1px solid #e5e7eb;
 }
 
 /* Calendar color legend */
@@ -259,11 +306,14 @@ button {
   flex-direction: column;
   gap: 0.1rem;
   width: 100%;
+  min-width: 0;        /* verhindert, dass der Button seine Grid-Zelle aufbläst */
   padding: 0.4rem 0.5rem;
   border: none;
   border-bottom: 1px solid #f0f0f0;
   text-align: left;
   cursor: pointer;
+  box-sizing: border-box;
+  overflow: hidden;    /* Inhalte bleiben in der Zelle */
 }
 
 /* Regular booking (other clubs) */
@@ -331,9 +381,12 @@ button {
 .entry-title {
   font-size: 0.8rem;
   font-weight: 500;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* In engen Teilhallen-Spalten umbrechen statt die Spalte aufzuziehen */
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
 }
 
 .entry-hall {
@@ -446,6 +499,70 @@ button {
   font-size: 1rem;
   color: #555;
   cursor: pointer;
+}
+
+/* Typ-Umschalter im "Neue Anfrage"-Modal (Einzeltermin | Serientermin) */
+.req-mode-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.req-mode-btn {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  background: #fff;
+  border: none;
+  font-size: 0.875rem;
+  color: #555;
+  cursor: pointer;
+  border-right: 1px solid #d1d5db;
+}
+
+.req-mode-btn:last-child {
+  border-right: none;
+}
+
+.req-mode-btn--active {
+  background: #0066cc;
+  color: #fff;
+  font-weight: 600;
+}
+
+.req-mode-btn:hover:not(.req-mode-btn--active) {
+  background: #f3f4f6;
+}
+
+/* Tab-Bar auf der Anfragen-Übersichtsseite */
+.req-tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 1rem;
+}
+
+.req-tab-btn {
+  padding: 0.5rem 1.25rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: 0.9rem;
+  color: #666;
+  cursor: pointer;
+}
+
+.req-tab-btn--active {
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+  font-weight: 600;
+}
+
+.req-tab-btn:hover:not(.req-tab-btn--active) {
+  color: #333;
 }
 
 .modal-panel h2 {

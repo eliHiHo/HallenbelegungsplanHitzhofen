@@ -6,10 +6,7 @@ echo "🚀 Starting production stack..."
 
 cd "$(dirname "$0")"
 
-# optional: pull latest images
-docker-compose pull
-
-# build + start
+# build + start (backend image must be built locally first: see README)
 docker-compose up -d --build
 
 echo "✅ Containers started"

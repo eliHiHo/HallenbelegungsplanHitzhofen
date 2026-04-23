@@ -44,8 +44,8 @@ export default function BookingRequestDetail({ request, onClose, onActionSuccess
       onActionSuccess("Anfrage wurde genehmigt.");
       onClose();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        setError("Genehmigung nicht möglich: Zeitraum ist bereits belegt.");
+      if (err instanceof ApiError) {
+        setError(err.message);
       } else {
         setError("Fehler beim Genehmigen. Bitte erneut versuchen.");
       }
@@ -60,8 +60,12 @@ export default function BookingRequestDetail({ request, onClose, onActionSuccess
       await reject.mutateAsync({ id: request.id, reason: rejectionReason.trim() });
       onActionSuccess("Anfrage wurde abgelehnt.");
       onClose();
-    } catch {
-      setError("Fehler beim Ablehnen. Bitte erneut versuchen.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Fehler beim Ablehnen. Bitte erneut versuchen.");
+      }
     }
   }
 

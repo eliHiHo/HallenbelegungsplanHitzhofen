@@ -31,6 +31,7 @@ public class JpaBookingSeriesRequestRepository implements BookingSeriesRequestRe
         DBBookingSeriesRequest entity = mapper.toEntity(bookingSeriesRequest);
         DBBookingSeriesRequest merged = em.merge(entity);
         em.flush();
+        em.refresh(merged); // @CreationTimestamp is null on detached entity after merge; refresh restores DB value
         return mapper.toDomain(merged);
     }
 

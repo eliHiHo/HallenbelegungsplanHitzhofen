@@ -68,7 +68,8 @@ class CalendarResourceTest {
                         "Halle A",
                         "Max Mustermann",
                         "APPROVED",
-                        true
+                        true,
+                        null
                 ))
         );
 

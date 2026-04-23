@@ -34,18 +34,22 @@ services:
       DB_USERNAME: hallen
       # DB_PASSWORD comes from .env
 
-      # Schema: 'update' creates tables on first boot; safe to leave as-is for
-      # small deployments. Switch to 'validate' once schema is stable.
+      # Schema: 'update' creates tables on first boot; both property names set for
+      # compatibility across Quarkus 3.x versions (old + new name).
+      QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
       QUARKUS_HIBERNATE_ORM_SCHEMA_MANAGEMENT_STRATEGY: update
 
-      # Session cookie requires HTTPS in prod (matches app.session.cookie.secure=true)
-      APP_BASE_URL: https://hallenbelegungsplan.hitzhofen.de
+      # Session cookie Secure flag.
+      # true  → required for HTTPS production (browser will not send cookie over HTTP)
+      # false → required for HTTP-only VM testing
+      # Controlled via APP_SESSION_COOKIE_SECURE in .env
+      APP_SESSION_COOKIE_SECURE: ${APP_SESSION_COOKIE_SECURE:-true}
 
       # Mail: non-secret config (secrets come from .env)
       MAIL_ENABLED: "true"
       MAIL_FROM: noreply@hitzhofen.de
       MAIL_REPLY_TO: noreply@hitzhofen.de
-      MAIL_BASE_URL: https://hallenbelegungsplan.hitzhofen.de
+      # MAIL_BASE_URL comes from .env (must match the domain users actually see)
       QUARKUS_MAILER_START_TLS: REQUIRED
     networks:
       - hallen-internal
@@ -58,6 +62,10 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      # :80              → HTTP-only, no TLS, works with any IP or hostname (VM testing)
+      # yourdomain.de    → Caddy provisions TLS automatically via ACME (production)
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-hallenbelegungsplan.hitzhofen.de}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ../frontend/dist:/srv/frontend:ro
@@ -68,6 +76,86 @@ services:
     depends_on:
       - backend
 
+  # ── Observability ─────────────────────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: hallen-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - hallen-internal
+    # No host port — internal only; query via Grafana
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: hallen-loki
+    restart: unless-stopped
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+    networks:
+      - hallen-internal
+    # No host port — push target for Promtail; query via Grafana
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: hallen-promtail
+    restart: unless-stopped
+    volumes:
+      - ./observability/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_positions:/var/promtail   # persists read offsets across restarts
+    command: -config.file=/etc/promtail/promtail-config.yml
+    depends_on:
+      - loki
+    networks:
+      - hallen-internal
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: hallen-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in docker/.env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_LOG_LEVEL: warn
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"   # localhost-only — access via: ssh -L 3000:127.0.0.1:3000 user@vps
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - hallen-internal
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: hallen-node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro,rslave
+    networks:
+      - hallen-internal
+    # No host port — scraped by Prometheus internally
+
 networks:
   hallen-internal:
     driver: bridge
@@ -77,3 +165,7 @@ volumes:
   hallen_db_data:
   caddy_data:
   caddy_config:
+  prometheus_data:
+  loki_data:
+  grafana_data:
+  promtail_positions:

@@ -1,5 +1,10 @@
-# Replace with your actual domain or use :80 for HTTP-only testing
-hallenbelegungsplan.hitzhofen.de {
+# CADDY_DOMAIN controls how Caddy binds:
+#   VM / HTTP testing  →  CADDY_DOMAIN=:80
+#   Production (HTTPS) →  CADDY_DOMAIN=hallenbelegungsplan.hitzhofen.de
+#
+# When a bare domain is used, Caddy automatically provisions TLS via ACME.
+# When :80 is used, Caddy serves plain HTTP with no TLS attempt.
+{$CADDY_DOMAIN} {
 
     # /api/* → Quarkus backend (prefix stripped before forwarding)
     # Browser:  GET /api/booking-requests

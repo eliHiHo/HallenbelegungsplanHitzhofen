@@ -106,7 +106,11 @@ public class BookingRequestService implements
 
         BookingRequest saved = bookingRequestRepository.save(request);
 
-        notificationPort.notifyAdminsAboutNewBookingRequest(request);
+        try {
+            notificationPort.notifyAdminsAboutNewBookingRequest(request);
+        } catch (Exception ignored) {
+            // Notification failure must not roll back the request creation
+        }
         return saved.getId();
     }
 
@@ -161,7 +165,11 @@ public class BookingRequestService implements
         request.approve(admin);
         bookingRequestRepository.save(request);
 
-        notificationPort.notifyRequesterAboutBookingRequestApproved(request, booking);
+        try {
+            notificationPort.notifyRequesterAboutBookingRequestApproved(request, savedBooking);
+        } catch (Exception ignored) {
+            // Notification failure must not roll back the approval
+        }
     }
 
     public void reject(UUID adminUserId, UUID bookingRequestId, String reason) {
@@ -187,7 +195,11 @@ public class BookingRequestService implements
         request.reject(admin, reason);
         bookingRequestRepository.save(request);
 
-        notificationPort.notifyRequesterAboutBookingRequestRejected(request, reason);
+        try {
+            notificationPort.notifyRequesterAboutBookingRequestRejected(request, reason);
+        } catch (Exception ignored) {
+            // Notification failure must not roll back the rejection
+        }
     }
 
     public List<BookingRequest> getOpenRequests(UUID adminUserId) {

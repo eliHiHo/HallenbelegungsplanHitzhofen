@@ -2,7 +2,6 @@ import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./AppLayout";
 import CalendarPage from "../pages/CalendarPage";
 import MyRequestsPage from "../pages/MyRequestsPage";
-import MySeriesRequestsPage from "../pages/MySeriesRequestsPage";
 import AdminRequestsPage from "../pages/AdminRequestsPage";
 import AdminSeriesRequestsPage from "../pages/AdminSeriesRequestsPage";
 import AdminBlockedTimesPage from "../pages/AdminBlockedTimesPage";
@@ -25,11 +24,12 @@ export const router = createBrowserRouter([
       { path: "reset-password", element: <ResetPasswordPage /> },
       {
         path: "my-requests",
-        element: <RequireAuth><MyRequestsPage /></RequireAuth>,
+        element: <RequireAuth role="CLUB_REPRESENTATIVE"><MyRequestsPage /></RequireAuth>,
       },
       {
+        // Alte Route weiterhin erreichbar – leitet auf die vereinheitlichte Seite um
         path: "my-series-requests",
-        element: <RequireAuth><MySeriesRequestsPage /></RequireAuth>,
+        element: <RequireAuth role="CLUB_REPRESENTATIVE"><MyRequestsPage /></RequireAuth>,
       },
       {
         path: "my-statistics",

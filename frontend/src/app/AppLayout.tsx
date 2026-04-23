@@ -25,8 +25,7 @@ export default function AppLayout() {
             <Link to="/">Kalender</Link>
             {user?.role === "CLUB_REPRESENTATIVE" && (
               <>
-                <Link to="/my-requests">Meine Anfragen</Link>
-                <Link to="/my-series-requests">Meine Serien</Link>
+                <Link to="/my-requests">Anfragen</Link>
                 <Link to="/my-statistics">Statistiken</Link>
               </>
             )}

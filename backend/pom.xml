@@ -112,6 +112,18 @@
             <artifactId>quarkus-scheduler</artifactId>
         </dependency>
 
+        <!-- Health: /q/health/live  /q/health/ready -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-health</artifactId>
+        </dependency>
+
+        <!-- Metrics: /q/metrics (Prometheus scrape endpoint) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- bcrypt implementation (jBCrypt) -->
         <dependency>
             <groupId>org.mindrot</groupId>

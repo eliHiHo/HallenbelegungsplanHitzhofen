@@ -5,6 +5,7 @@ import {
   useCancelBookingSeries,
   useCancelSeriesOccurrence,
 } from "../features/bookingSeries/useCancelBookingSeries";
+import { ApiError } from "../shared/api/client";
 
 function fmt(n: number, decimals = 0): string {
   return n.toLocaleString("de-DE", {
@@ -44,8 +45,8 @@ export default function AdminStatisticsPage() {
       setSelectedSeriesId(null);
       setActionSuccess("Serie wurde storniert.");
       setTimeout(() => setActionSuccess(null), 4000);
-    } catch {
-      setActionError("Fehler beim Stornieren der Serie.");
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Fehler beim Stornieren der Serie.");
     }
   }
 
@@ -57,8 +58,8 @@ export default function AdminStatisticsPage() {
       setCancelOccurrenceId(null);
       setActionSuccess("Termin wurde storniert.");
       setTimeout(() => setActionSuccess(null), 4000);
-    } catch {
-      setActionError("Fehler beim Stornieren des Termins.");
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Fehler beim Stornieren des Termins.");
     }
   }
 

@@ -31,7 +31,8 @@ class CalendarApiMapperTest {
                 "Halle A",
                 "Max Mustermann",
                 "APPROVED",
-                true
+                true,
+                null
         );
 
         CalendarWeekDTO week = CalendarApiMapper.toDTO(new CalendarWeekView(LocalDate.of(2026, 5, 4), LocalDate.of(2026, 5, 10), List.of(entry)));

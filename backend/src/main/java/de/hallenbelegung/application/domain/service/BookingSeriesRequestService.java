@@ -111,7 +111,11 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
 
         BookingSeriesRequest saved = bookingSeriesRequestRepository.save(request);
 
-        notificationPort.notifyAdminsAboutNewBookingSeriesRequest(request);
+        try {
+            notificationPort.notifyAdminsAboutNewBookingSeriesRequest(request);
+        } catch (Exception ignored) {
+            // Notification failure must not roll back the request creation
+        }
         return saved.getId();
     }
 
@@ -197,7 +201,11 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         request.approve(admin);
         bookingSeriesRequestRepository.save(request);
 
-        notificationPort.notifyRequesterAboutBookingSeriesRequestApproved(request, bookingSeries);
+        try {
+            notificationPort.notifyRequesterAboutBookingSeriesRequestApproved(request, savedSeries);
+        } catch (Exception ignored) {
+            // Notification failure must not roll back the approval
+        }
 
         return new BookingSeriesApproveResult(createdBookingIds, skippedDates);
 
@@ -222,7 +230,11 @@ public class BookingSeriesRequestService implements ApproveBookingSeriesRequestU
         request.reject(admin, reason);
         bookingSeriesRequestRepository.save(request);
 
-        notificationPort.notifyRequesterAboutBookingSeriesRequestRejected(request, reason);
+        try {
+            notificationPort.notifyRequesterAboutBookingSeriesRequestRejected(request, reason);
+        } catch (Exception ignored) {
+            // Notification failure must not roll back the rejection
+        }
     }
 
     public List<BookingSeriesRequest> getOpenRequests(UUID adminUserId) {
